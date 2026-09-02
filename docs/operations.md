@@ -12,7 +12,10 @@ uv run presenceguard download-models
 uv run presenceguard init-db
 ```
 
-Put the generated key and a high-entropy local admin token in `.env`. Keep the file outside version control. The models are also ignored; each downloaded file is checked against its recorded SHA-256 before installation.
+Put the generated key, a high-entropy local admin token, and a local admin password (at least
+10 characters) in `.env`. On first startup, the password bootstraps the `admin` account. Keep
+the file outside version control. The models are also ignored; each downloaded file is checked
+against its recorded SHA-256 before installation.
 
 ## Run locally
 
@@ -28,10 +31,15 @@ The default address is `http://127.0.0.1:8000`. Binding to a non-loopback addres
 | --- | --- | --- |
 | `PRESENCEGUARD_TEMPLATE_KEY` | AES-256-GCM template key | required |
 | `PRESENCEGUARD_ADMIN_TOKEN` | Local admin boundary | required for admin routes |
+| `PRESENCEGUARD_ADMIN_USERNAME` | Bootstrap admin username | `admin` |
+| `PRESENCEGUARD_ADMIN_PASSWORD` | Bootstrap password for the first admin account | required for account login |
+| `PRESENCEGUARD_SESSION_SECRET` | Signed browser-session secret; falls back to the template key locally | template key |
+| `PRESENCEGUARD_SESSION_TTL_HOURS` | Browser session lifetime | `8` |
 | `PRESENCEGUARD_DATABASE_PATH` | SQLite database location | `data/private/presenceguard.db` |
 | `PRESENCEGUARD_MATCH_THRESHOLD` | Stored verification threshold | `0.554712` |
 | `PRESENCEGUARD_DUPLICATE_WINDOW_SECONDS` | Duplicate attendance window | `300` |
 | `PRESENCEGUARD_MAXIMUM_UPLOAD_BYTES` | Per-image upload limit | `5000000` |
+| `PRESENCEGUARD_LIVENESS_REQUIRED` | Reject matches unless a liveness provider passes | `false` (no provider configured) |
 
 Thresholds are experimental configuration, not universal biometric defaults. Calibrate on representative development data and freeze the policy before evaluating held-out data.
 
@@ -48,14 +56,19 @@ Treat logs as operational metadata nevertheless. Do not paste them into public i
 3. Process frames in memory and discard them after extraction.
 4. Encrypt the template before persistence.
 5. Restrict attendance reads to an authorized operator.
-6. Delete the participant when the purpose ends; foreign-key cascade removes attendance events.
+6. Delete the participant when the purpose ends; foreign-key cascade removes legacy attendance events.
 7. Rotate the key and re-enroll participants if compromise is suspected.
 
 Automatic key rotation, backups, retention scheduling, and institutional identity are not implemented. Keep the database and key under separate access controls for any serious pilot.
 
 ## Verification and recovery
 
-The health endpoint reports local processing and no image retention. If a model is missing or corrupt, use `presenceguard download-models` and verify the checksums in `models/README.md`. If the template key is lost, encrypted templates cannot be recovered; re-enrollment is the intended recovery path. If the admin token is lost, change the local `.env` value and restart the process.
+The health endpoint reports local processing, no image retention, and liveness availability. If a
+model is missing or corrupt, use `presenceguard download-models` and verify the checksums in
+`models/README.md`. If the template key is lost, encrypted templates cannot be recovered;
+re-enrollment is the intended recovery path. If the admin password is lost, change
+`PRESENCEGUARD_ADMIN_PASSWORD`, remove only the local database's `users` bootstrap row after a
+backup, and restart; account recovery should be an explicit operator action.
 
 ## Pre-release checklist
 

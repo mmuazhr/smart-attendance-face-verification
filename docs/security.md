@@ -15,10 +15,10 @@
 | Raw image retention | Uploads are read into memory and never written by application code |
 | Template database theft | AES-256-GCM per template with a random nonce and participant-bound additional authenticated data |
 | Template swapping or tampering | AES-GCM authentication and participant ID binding fail closed |
-| Duplicate or retried check-in | Unique idempotency key plus transactional duplicate-window check |
+| Duplicate or retried check-in | Unique participant/session attendance constraint plus transactional writes; legacy API also has idempotency and duplicate-window checks |
 | Concurrent duplicate writes | `BEGIN IMMEDIATE`, unique constraint, and indexed participant/time lookup |
 | Ambiguous image | Reject unreadable, undersized, no-face, multi-face, dim, bright, blurry, or small-face inputs |
-| Unauthorized enrollment/export/deletion | Constant-time local admin-token comparison |
+| Unauthorized enrollment/export/deletion | Expiring signed sessions with server-side admin RBAC; legacy token comparison remains for compatibility routes |
 | Browser cross-origin form abuse | State-changing admin routes require a custom header; verification requires a custom idempotency header |
 | SQL injection | Parameterized SQLite statements only |
 | Model supply-chain substitution | Fixed upstream URLs and SHA-256 checksums before atomic install |
@@ -29,7 +29,12 @@
 
 PresenceGuard does not implement validated presentation-attack detection. A high-quality replay could pass. Face matching is probabilistic, and the observed false-accept result is based on only 135 test negatives. An operator must not interpret “0 observed false accepts” as a zero population risk.
 
-The local interface is not a multi-tenant authorization system. Binding beyond loopback, sharing an admin token broadly, placing the database and key together, or using HTTP across a network invalidates the default threat model. A real deployment requires campus SSO, TLS, managed key storage, audit retention policy, role separation, rate limiting, backups, incident response, and a non-biometric recovery path.
+The local interface is a single-workspace role-aware reference application, not a multi-tenant
+institutional authorization system. Binding beyond loopback, sharing an admin token broadly,
+placing the database and key together, or using HTTP across a network invalidates the default
+threat model. A real deployment requires campus SSO, TLS, managed key storage, audit retention
+policy, role separation, rate limiting, backups, incident response, and a non-biometric recovery
+path.
 
 The SFace directory carries Apache-2.0 terms, but the precise training-data provenance for the distributed weight is not fully documented. Complete legal/model-risk review is required for commercial deployment.
 

@@ -1,142 +1,252 @@
-const camera = document.querySelector("#camera");
+const app = document.querySelector("#app");
 const canvas = document.querySelector("#capture-canvas");
-const cameraState = document.querySelector("#camera-state");
-const result = document.querySelector("#result");
-let stream = null;
+const state = { user: null, view: "dashboard", cameraStream: null, target: null };
 
-function showResult(kicker, message, isError = false) {
-  result.classList.toggle("error", isError);
-  result.innerHTML = `<span class="result-kicker">${kicker}</span><strong>${message}</strong>`;
+const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
+}[character]));
+
+const prettyStatus = (value) => String(value || "").replaceAll("_", " ");
+
+function badge(value, tone = "neutral") {
+  const normalized = String(value || "").toLowerCase();
+  const colour = tone !== "neutral" ? tone : (
+    ["active", "present", "enrolled", "verified"].includes(normalized) ? "positive" :
+    ["late", "scheduled", "needs reenrollment"].includes(normalized) ? "warning" :
+    ["closed", "disabled", "absent", "rejected"].includes(normalized) ? "danger" : "neutral"
+  );
+  return `<span class="badge ${colour}">${escapeHtml(prettyStatus(value))}</span>`;
 }
 
-function safeMessage(payload, fallback) {
-  return payload?.error?.message || fallback;
-}
-
-async function startCamera() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 720 } },
-      audio: false,
-    });
-    camera.srcObject = stream;
-    await camera.play();
-    cameraState.textContent = "Camera ready · one face only";
-    showResult("Ready", "Centre one face inside the guide.");
-  } catch (error) {
-    showResult("Camera blocked", "Allow camera access in your browser settings.", true);
-  }
-}
-
-async function captureFrame() {
-  if (!stream || camera.readyState < 2) {
-    throw new Error("Start the camera first.");
-  }
-  const width = camera.videoWidth;
-  const height = camera.videoHeight;
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d", { alpha: false });
-  context.translate(width, 0);
-  context.scale(-1, 1);
-  context.drawImage(camera, 0, 0, width, height);
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("Could not capture a frame."))),
-      "image/jpeg",
-      0.88,
-    );
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.valueOf()) ? value : date.toLocaleDateString(undefined, {
+    day: "numeric", month: "short", year: "numeric",
   });
 }
 
-document.querySelector("#start-camera").addEventListener("click", startCamera);
-
-document.querySelectorAll(".tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((candidate) => {
-      const active = candidate === tab;
-      candidate.classList.toggle("active", active);
-      candidate.setAttribute("aria-selected", String(active));
-    });
-    document.querySelector("#checkin-panel").classList.toggle("hidden", tab.dataset.panel !== "checkin");
-    document.querySelector("#enroll-panel").classList.toggle("hidden", tab.dataset.panel !== "enroll");
+function formatTimestamp(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? value : date.toLocaleString(undefined, {
+    day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
   });
-});
+}
 
-document.querySelector("#verify").addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  const participantId = document.querySelector("#checkin-id").value.trim();
-  if (!participantId) {
-    showResult("Missing ID", "Enter a participant ID.", true);
-    return;
+function formatNumber(value) {
+  return new Intl.NumberFormat().format(Number(value || 0));
+}
+
+function todayLabel() {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: "long", day: "2-digit", month: "long", year: "numeric",
+  });
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    credentials: "same-origin",
+    headers: { ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }), ...options.headers },
+    ...options,
+  });
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("json") ? await response.json() : await response.text();
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || "Something went wrong. Please try again.");
   }
-  button.disabled = true;
+  return payload;
+}
+
+function shell() {
+  const isAdmin = state.user.role === "admin";
+  const nav = isAdmin ? [
+    ["dashboard", "Overview", "◒"], ["sessions", "Sessions", "◫"], ["attendance", "Attendance", "✓"],
+    ["participants", "Participants", "◎"], ["reports", "Reports", "↗"], ["audit", "Audit log", "≡"],
+    ["research", "Research Journey", "✦"], ["privacy", "Privacy", "⌁"], ["settings", "Settings", "⚙"],
+  ] : [
+    ["dashboard", "My overview", "◒"], ["checkin", "Check in", "✓"], ["history", "Attendance history", "▤"],
+    ["enrollment", "Face enrolment", "◎"], ["research", "Research Journey", "✦"],
+    ["privacy", "Privacy", "⌁"], ["profile", "Profile", "◌"],
+  ];
+  app.innerHTML = `<div class="product-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#dashboard" data-view="dashboard"><span class="brand-mark">PG</span><span>PresenceGuard</span></a>
+      <div class="sidebar-context"><span class="status-dot"></span> Local workspace</div>
+      <nav class="nav" aria-label="Main navigation">
+        <p class="nav-label">Workspace</p>
+        ${nav.map(([id, label, icon]) => `<button class="nav-item ${state.view === id ? "active" : ""}" data-view="${id}"><span>${icon}</span>${label}</button>`).join("")}
+      </nav>
+      <div class="sidebar-foot"><div class="research-note"><span class="eyebrow">Research mode</span><p>Liveness is not validated in this build.</p><button data-view="research" class="text-button">Read the boundary →</button></div></div>
+    </aside>
+    <div class="content-wrap">
+      <header class="topbar"><button class="mobile-menu" data-action="toggle-menu" aria-label="Open navigation">☰</button><div><span class="topbar-kicker">${isAdmin ? "Operations console" : "Participant workspace"}</span><h1 id="page-title">${escapeHtml(pageTitle(state.view))}</h1></div><div class="topbar-user"><div class="avatar">${escapeHtml(initials(state.user.display_name))}</div><div class="user-meta"><strong>${escapeHtml(state.user.display_name)}</strong><span>${escapeHtml(prettyStatus(state.user.role))}</span></div><button class="icon-button" data-action="logout" title="Sign out">↗</button></div></header>
+      <main id="screen" class="screen"></main>
+    </div>
+  </div>`;
+  document.querySelectorAll("[data-view]").forEach((element) => element.addEventListener("click", () => {
+    state.view = element.dataset.view;
+    document.querySelector(".sidebar")?.classList.remove("open");
+    renderView();
+  }));
+  document.querySelector("[data-action=logout]").addEventListener("click", logout);
+  document.querySelector("[data-action=toggle-menu]").addEventListener("click", () => document.querySelector(".sidebar").classList.toggle("open"));
+}
+
+function initials(value) {
+  return String(value || "PG").split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+}
+
+function pageTitle(view) {
+  return ({ dashboard: "Good to see you", sessions: "Attendance sessions", attendance: "Attendance management", participants: "Participants", reports: "Reports & analytics", audit: "Audit log", checkin: "Check in", history: "Attendance history", enrollment: "Face enrolment", research: "How PresenceGuard evolved", privacy: "Privacy by design", profile: "Your profile", settings: "Workspace settings" })[view] || "PresenceGuard";
+}
+
+function loading(label = "Loading workspace…") {
+  return `<div class="loading"><span class="spinner"></span>${escapeHtml(label)}</div>`;
+}
+
+function emptyState(title, message, action = "") {
+  return `<div class="empty-state"><div class="empty-icon">＋</div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(message)}</p>${action}</div>`;
+}
+
+function errorState(error) {
+  return `<div class="error-state"><strong>We hit a problem</strong><p>${escapeHtml(error.message)}</p><button class="button ghost" data-action="retry">Try again</button></div>`;
+}
+
+async function renderView() {
+  if (!state.user) return renderLogin();
+  shell();
+  const screen = document.querySelector("#screen");
+  screen.innerHTML = loading();
   try {
-    showResult("Processing", "Checking face quality and encrypted references…");
-    const frame = await captureFrame();
-    const form = new FormData();
-    form.append("image", frame, "verification.jpg");
-    const response = await fetch(`/api/v1/participants/${encodeURIComponent(participantId)}/verification`, {
-      method: "POST",
-      headers: { "Idempotency-Key": crypto.randomUUID() },
-      body: form,
-    });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(safeMessage(payload, "Verification failed."));
-    if (payload.status === "verified") {
-      showResult("Attendance recorded", `Verified with score ${payload.score.toFixed(3)}.`);
-    } else if (payload.status === "duplicate") {
-      showResult("Already checked in", "A recent attendance record already exists.");
-    } else {
-      showResult("Not verified", `Score ${payload.score.toFixed(3)} did not meet the threshold.`, true);
-    }
+    if (state.view === "dashboard") await renderDashboard(screen);
+    else if (state.view === "sessions") await renderSessions(screen);
+    else if (state.view === "participants") await renderParticipants(screen);
+    else if (state.view === "attendance") await renderAttendance(screen);
+    else if (state.view === "reports") renderReports(screen);
+    else if (state.view === "audit") await renderAudit(screen);
+    else if (state.view === "checkin") await renderCheckin(screen);
+    else if (state.view === "history") await renderHistory(screen);
+    else if (state.view === "enrollment") renderEnrollment(screen);
+    else if (state.view === "research") renderResearch(screen);
+    else if (state.view === "privacy") renderPrivacy(screen);
+    else if (state.view === "profile") renderProfile(screen);
+    else if (state.view === "settings") renderSettings(screen);
+    bindActions();
   } catch (error) {
-    showResult("Verification stopped", error.message, true);
-  } finally {
-    button.disabled = false;
+    screen.innerHTML = errorState(error);
+    screen.querySelector("[data-action=retry]").addEventListener("click", renderView);
   }
-});
+}
 
-document.querySelector("#enroll").addEventListener("click", async (event) => {
-  const button = event.currentTarget;
-  const participantId = document.querySelector("#enroll-id").value.trim();
-  const displayName = document.querySelector("#display-name").value.trim();
-  const adminToken = document.querySelector("#admin-token").value;
-  const consent = document.querySelector("#consent").checked;
-  if (!participantId || !displayName || !adminToken || !consent) {
-    showResult("Enrollment incomplete", "Enter all fields and confirm consent.", true);
-    return;
-  }
-  button.disabled = true;
-  try {
-    const form = new FormData();
-    form.append("display_name", displayName);
-    form.append("consent_confirmed", "true");
-    for (let index = 0; index < 50; index += 1) {
-      showResult("Capturing", `Hold still, then turn slightly · ${index + 1} / 50`);
-      const frame = await captureFrame();
-      form.append("images", frame, `enrollment-${index + 1}.jpg`);
-      await new Promise((resolve) => setTimeout(resolve, 110));
-    }
-    showResult("Encrypting", "Creating the local biometric template…");
-    const response = await fetch(`/api/v1/participants/${encodeURIComponent(participantId)}/enrollment`, {
-      method: "POST",
-      headers: { "X-Admin-Token": adminToken },
-      body: form,
-    });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(safeMessage(payload, "Enrollment failed."));
-    showResult(
-      "Enrollment complete",
-      `${payload.accepted_samples} references encrypted; ${payload.rejected_samples} discarded.`,
-    );
-  } catch (error) {
-    showResult("Enrollment stopped", error.message, true);
-  } finally {
-    button.disabled = false;
-  }
-});
+function renderLogin() {
+  app.innerHTML = `<main class="auth-page"><section class="auth-story"><a class="brand brand-light" href="/"><span class="brand-mark">PG</span><span>PresenceGuard</span></a><div class="auth-copy"><p class="eyebrow">Privacy-first attendance</p><h1>Attendance verified by <em>presence</em>, not passwords.</h1><p>Authenticated sessions with local face verification, an evidence trail, and honest research boundaries.</p><div class="auth-points"><div><strong>01</strong><span>Local-first<br />verification</span></div><div><strong>02</strong><span>Encrypted<br />templates</span></div><div><strong>03</strong><span>Auditable<br />attendance</span></div></div></div><p class="auth-foot">A university / research engineering project · <button class="text-button light" data-action="show-research">View Research Journey →</button></p></section><section class="auth-panel"><div class="auth-form"><span class="form-icon">↗</span><p class="eyebrow">Welcome back</p><h2>Sign in to PresenceGuard</h2><p class="muted">Use the account configured for this local workspace.</p><form id="login-form"><label for="login-username">Username</label><input id="login-username" name="username" autocomplete="username" required placeholder="e.g. admin" /><label for="login-password">Password</label><input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="Your password" /><div id="login-error" class="form-error" role="alert"></div><button class="button primary" type="submit">Continue <span>→</span></button></form><div class="auth-help"><span class="status-dot"></span><span>Running locally · Camera frames stay on this device</span></div></div></section></main>`;
+  document.querySelector("#login-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector("button");
+    button.disabled = true; button.innerHTML = `<span class="spinner small"></span> Signing in…`;
+    try {
+      const form = new FormData(event.currentTarget);
+      const payload = await api("/api/v1/auth/login", { method: "POST", body: JSON.stringify({ username: form.get("username"), password: form.get("password") }) });
+      state.user = payload.user; state.view = "dashboard"; renderView();
+    } catch (error) { document.querySelector("#login-error").textContent = error.message; button.disabled = false; button.innerHTML = `Continue <span>→</span>`; }
+  });
+  document.querySelector("[data-action=show-research]").addEventListener("click", () => { state.view = "research"; renderResearch(app, true); });
+}
 
-window.addEventListener("beforeunload", () => {
-  stream?.getTracks().forEach((track) => track.stop());
-});
+async function logout() {
+  try { await api("/api/v1/auth/logout", { method: "POST" }); } catch (_) { /* expired session */ }
+  state.user = null; state.cameraStream?.getTracks().forEach((track) => track.stop()); state.cameraStream = null; renderLogin();
+}
+
+async function renderDashboard(screen) {
+  if (state.user.role === "admin") {
+    const data = await api("/api/v1/admin/dashboard");
+    const metrics = data.metrics;
+    screen.innerHTML = `<div class="welcome-row"><div><p class="eyebrow">${todayLabel()}</p><h2>Keep the room accounted for.</h2><p class="muted">Operational visibility for privacy-conscious attendance.</p></div><button class="button primary compact" data-view="sessions">＋ New session</button></div><section class="metric-grid">${metric("Active sessions", metrics.active_sessions, "Live now", "teal")}${metric("Participants", metrics.total_users, "Active accounts", "navy")}${metric("Attendance today", metrics.attendance_today, `${metrics.present_today} present · ${metrics.late_today} late`, "orange")}${metric("Verification failures", metrics.verification_failures, "Attempts needing review", "rose")}</section><div class="dashboard-grid"><section class="panel"><div class="panel-heading"><div><span class="eyebrow">Session pulse</span><h3>Active & upcoming</h3></div><button class="text-button" data-view="sessions">View all →</button></div>${data.sessions.length ? `<div class="session-list">${data.sessions.map(sessionCard).join("")}</div>` : emptyState("No sessions yet", "Create your first attendance session to begin recording attendance.", `<button class="button ghost" data-view="sessions">Create a session</button>`)}</section><section class="panel"><div class="panel-heading"><div><span class="eyebrow">Control room</span><h3>What matters</h3></div></div><div class="insight-list"><div><span class="insight-icon green">✓</span><div><strong>Records are server-guarded</strong><p>One participant can have one record per session.</p></div></div><div><span class="insight-icon amber">!</span><div><strong>Liveness is unavailable</strong><p>Face matching is not proof of a live person.</p></div></div><div><span class="insight-icon blue">⌁</span><div><strong>Corrections leave evidence</strong><p>Manual changes require a reason and create an audit entry.</p></div></div></div><button class="research-banner" data-view="research"><span>✦</span><div><strong>Trace the research journey</strong><p>See how each limitation shaped the next iteration.</p></div><b>→</b></button></section></div>`;
+  } else {
+    const [sessions, history] = await Promise.all([api("/api/v1/sessions"), api("/api/v1/attendance/history")]);
+    const active = sessions.find((session) => session.status === "active");
+    const counts = { present: history.filter((record) => record.status === "present").length, late: history.filter((record) => record.status === "late").length, absent: history.filter((record) => record.status === "absent").length };
+    const rate = history.length ? Math.round(((counts.present + counts.late) / history.length) * 100) : 0;
+    screen.innerHTML = `<div class="welcome-row"><div><p class="eyebrow">Participant workspace</p><h2>Welcome back, ${escapeHtml(state.user.display_name.split(" ")[0])}.</h2><p class="muted">Your attendance record, in one calm place.</p></div><span class="research-badge">⌁ Local processing</span></div><section class="participant-hero ${active ? "has-session" : ""}"><div><span class="eyebrow">${active ? "Attendance opportunity" : "No live session"}</span><h3>${active ? escapeHtml(active.title) : "You’re all caught up"}</h3><p>${active ? `${escapeHtml(active.course)} · closes at ${escapeHtml(active.check_in_close)}` : "Active check-in sessions will appear here when they open."}</p></div>${active ? `<button class="button light-button" data-view="checkin">Check in <span>→</span></button>` : `<button class="button ghost light-outline" data-view="history">View history</button>`}</section><section class="summary-strip"><div><span class="summary-number">${counts.present}</span><span>Present</span></div><div><span class="summary-number">${counts.late}</span><span>Late</span></div><div><span class="summary-number">${counts.absent}</span><span>Absent</span></div><div class="rate"><span class="summary-number">${rate}%</span><span>Attendance rate</span></div></section><div class="dashboard-grid"><section class="panel"><div class="panel-heading"><div><span class="eyebrow">Recent record</span><h3>Latest attendance</h3></div><button class="text-button" data-view="history">See history →</button></div>${history.length ? history.slice(0, 4).map(historyRow).join("") : emptyState("No attendance history yet", "Your completed attendance records will appear here.")}</section><section class="panel"><div class="panel-heading"><div><span class="eyebrow">Biometric status</span><h3>Face verification</h3></div></div><div class="enrollment-status ${state.user.enrollment_status === "enrolled" ? "ready" : "needs-action"}"><span class="status-symbol">${state.user.enrollment_status === "enrolled" ? "✓" : "◎"}</span><div><strong>${state.user.enrollment_status === "enrolled" ? "Enrolled locally" : "Enrolment required"}</strong><p>${state.user.enrollment_status === "enrolled" ? `${state.user.enrollment_samples} encrypted references · raw frames discarded` : "Set up face verification before your first check-in."}</p></div><button class="text-button" data-view="enrollment">${state.user.enrollment_status === "enrolled" ? "Manage →" : "Set up →"}</button></div></section></div>`;
+  }
+}
+
+function metric(label, value, note, colour) { return `<article class="metric-card ${colour}"><span>${escapeHtml(label)}</span><strong>${formatNumber(value)}</strong><small>${escapeHtml(note)}</small></article>`; }
+
+function sessionCard(session) { return `<article class="session-card"><div class="session-card-top"><div class="session-icon">◫</div><div><h4>${escapeHtml(session.title)}</h4><p>${escapeHtml(session.course)} · ${formatDate(session.session_date)}</p></div>${badge(session.status)}</div><div class="session-card-meta"><span>⌚ ${escapeHtml(session.check_in_open)}–${escapeHtml(session.check_in_close)}</span><span>⌖ ${escapeHtml(session.location || "Location not set")}</span><strong>${session.present_count}/${session.expected_participants || 0} present</strong></div><div class="progress"><i style="width:${Math.min(100, session.attendance_rate)}%"></i></div></article>`; }
+
+async function renderSessions(screen) {
+  const sessions = await api("/api/v1/sessions");
+  screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">Attendance engine</p><h2>Sessions turn a face match into an accountable event.</h2><p class="muted">Create the class, define the check-in window, then activate it when the room is ready.</p></div><button class="button primary" data-action="toggle-create-session">＋ Create session</button></div><div id="create-session" class="panel form-panel hidden">${sessionForm()}</div><div class="filter-row"><div class="filter-tabs"><button class="filter active">All sessions</button><button class="filter">Active</button><button class="filter">Upcoming</button><button class="filter">Completed</button></div><span class="muted">${sessions.length} session${sessions.length === 1 ? "" : "s"}</span></div><section class="session-table panel">${sessions.length ? `<div class="table-wrap"><table><thead><tr><th>Session</th><th>Window</th><th>Attendance</th><th>Status</th><th></th></tr></thead><tbody>${sessions.map((session) => `<tr><td><strong>${escapeHtml(session.title)}</strong><small>${escapeHtml(session.course)} · ${formatDate(session.session_date)}</small></td><td>${escapeHtml(session.check_in_open)}–${escapeHtml(session.check_in_close)}<small>${escapeHtml(session.location || "No location")}</small></td><td><strong>${session.present_count}/${session.expected_participants || 0}</strong><small>${session.attendance_rate}% attendance</small></td><td>${badge(session.status)}</td><td class="actions">${session.status === "scheduled" ? `<button class="mini-button" data-action="session-status" data-id="${session.session_id}" data-status="active">Activate</button>` : ""}${session.status === "active" ? `<button class="mini-button" data-action="session-status" data-id="${session.session_id}" data-status="closed">Close</button>` : ""}<button class="mini-button subtle" data-action="open-roster" data-id="${session.session_id}">Manage</button></td></tr>`).join("")}</tbody></table></div>` : emptyState("No sessions yet", "Create your first attendance session to begin recording attendance.", `<button class="button ghost" data-action="toggle-create-session">Create a session</button>`)}</section>`;
+}
+
+function sessionForm() { const date = new Date().toISOString().slice(0, 10); return `<div class="panel-heading"><div><span class="eyebrow">New session</span><h3>Set the attendance rules</h3></div><button class="icon-button" data-action="toggle-create-session">×</button></div><form id="session-form" class="form-grid"><label>Title<input name="title" required placeholder="Software Engineering Lecture" /></label><label>Course / event<input name="course" required placeholder="CSC3102" /></label><label class="wide">Description<textarea name="description" rows="2" placeholder="Optional context for participants"></textarea></label><label>Date<input name="session_date" type="date" value="${date}" required /></label><label>Location<input name="location" placeholder="Lab 4" /></label><label>Session starts<input name="start_time" type="time" value="10:00" required /></label><label>Session ends<input name="end_time" type="time" value="12:00" required /></label><label>Check-in opens<input name="check_in_open" type="time" value="09:45" required /></label><label>Check-in closes<input name="check_in_close" type="time" value="10:30" required /></label><label>Late after<input name="late_threshold" type="time" value="10:10" required /></label><div class="wide form-actions"><p id="session-error" class="form-error"></p><button class="button primary" type="submit">Create session →</button></div></form>`; }
+
+async function renderParticipants(screen) {
+  const participants = await api("/api/v1/admin/participants");
+  screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">People & access</p><h2>Registered participants</h2><p class="muted">Manage account status and enrolment readiness without exposing biometric templates.</p></div><button class="button primary" data-action="toggle-create-participant">＋ Add participant</button></div><div id="create-participant" class="panel form-panel hidden">${participantForm()}</div><section class="panel table-panel">${participants.length ? `<div class="table-toolbar"><input class="search" placeholder="Search participants" aria-label="Search participants" /><span class="muted">${participants.length} participant${participants.length === 1 ? "" : "s"}</span></div><div class="table-wrap"><table><thead><tr><th>Participant</th><th>Account</th><th>Face enrolment</th><th>Attendance rate</th><th></th></tr></thead><tbody>${participants.map((person) => `<tr><td><div class="person-cell"><div class="avatar small">${escapeHtml(initials(person.display_name))}</div><div><strong>${escapeHtml(person.display_name)}</strong><small>${escapeHtml(person.user_id)} · ${escapeHtml(person.email)}</small></div></div></td><td>${badge(person.status)}</td><td>${badge(person.enrollment_status)}<small>${person.enrollment_samples ? `${person.enrollment_samples} references` : "No template"}</small></td><td>${person.attendance.attendance_rate}%<small>${person.attendance.present + person.attendance.late} attended</small></td><td class="actions"><button class="mini-button" data-action="enroll-user" data-id="${person.user_id}" data-name="${escapeHtml(person.display_name)}">Enrol face</button><button class="mini-button subtle" data-action="toggle-user" data-id="${person.user_id}" data-status="${person.status === "active" ? "disabled" : "active"}">${person.status === "active" ? "Disable" : "Enable"}</button></td></tr>`).join("")}</tbody></table></div>` : emptyState("No participants yet", "Create an account before collecting a consented face template.", `<button class="button ghost" data-action="toggle-create-participant">Add participant</button>`)}</section>`; }
+
+function participantForm() { return `<div class="panel-heading"><div><span class="eyebrow">New participant</span><h3>Create an account</h3></div><button class="icon-button" data-action="toggle-create-participant">×</button></div><form id="participant-form" class="form-grid"><label>Participant ID<input name="participant_id" required placeholder="student-042" /></label><label>Username<input name="username" required placeholder="student042" /></label><label>Email<input name="email" type="email" required placeholder="student@university.edu" /></label><label>Display name<input name="display_name" required placeholder="Student name" /></label><label>Password<input name="password" type="password" minlength="10" required placeholder="At least 10 characters" /></label><div class="wide form-actions"><p id="participant-error" class="form-error"></p><button class="button primary" type="submit">Create account →</button></div></form>`; }
+
+async function renderAttendance(screen) {
+  const sessions = await api("/api/v1/sessions");
+  const selected = state.selectedSession || sessions[0]?.session_id;
+  const rosterData = selected ? await api(`/api/v1/admin/sessions/${selected}/roster`) : null;
+  state.selectedSession = selected;
+  screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">Attendance control</p><h2>Review the room, then leave a trail.</h2><p class="muted">Manual exceptions require a reason and are recorded in the audit log.</p></div><a class="button secondary-link" href="/api/v1/admin/reports/attendance.csv">Download CSV ↗</a></div><div class="select-bar"><label>Session<select id="attendance-session">${sessions.map((session) => `<option value="${session.session_id}" ${session.session_id === selected ? "selected" : ""}>${escapeHtml(session.title)} · ${formatDate(session.session_date)}</option>`).join("")}</select></label>${rosterData ? `<div class="select-summary"><strong>${rosterData.session.present_count}/${rosterData.session.expected_participants}</strong><span>present · ${rosterData.session.attendance_rate}%</span></div>` : ""}</div>${rosterData ? `<section class="panel table-panel"><div class="table-toolbar"><div class="filter-tabs"><button class="filter active">All</button><button class="filter">Present</button><button class="filter">Late</button><button class="filter">Absent</button></div><span class="research-badge">⌁ ${escapeHtml(rosterData.session.status)}</span></div><div class="table-wrap"><table><thead><tr><th>Participant</th><th>Check-in time</th><th>Method</th><th>Status</th><th>Action</th></tr></thead><tbody>${rosterData.roster.map((row) => `<tr><td><strong>${escapeHtml(row.display_name)}</strong><small>${escapeHtml(row.user_id)}</small></td><td>${formatTimestamp(row.check_in_timestamp)}</td><td>${row.verification_method ? badge(row.verification_method) : "—"}</td><td>${badge(row.attendance_status || "absent")}${row.manually_adjusted ? `<small>Reason: ${escapeHtml(row.adjustment_reason)}</small>` : ""}</td><td><button class="mini-button subtle" data-action="correct-attendance" data-session="${selected}" data-participant="${row.user_id}" data-attendance="${row.attendance_id || ""}" data-name="${escapeHtml(row.display_name)}">Correct</button></td></tr>`).join("")}</tbody></table></div></section>` : emptyState("No sessions to review", "Create a session first, then its roster will appear here.")}`;
+}
+
+function renderReports(screen) { screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">Evidence, not theatre</p><h2>Reports that derive from attendance records.</h2><p class="muted">The CSV export is generated from the local database at the moment you request it.</p></div><a class="button primary" href="/api/v1/admin/reports/attendance.csv">Export attendance CSV ↗</a></div><section class="report-grid"><article class="panel report-card"><span class="report-icon teal">↗</span><p class="eyebrow">Attendance export</p><h3>Download the working report</h3><p>One row per participant and session, including status, timestamp, and verification method.</p><a class="text-button" href="/api/v1/admin/reports/attendance.csv">Download CSV →</a></article><article class="panel report-card"><span class="report-icon orange">◒</span><p class="eyebrow">Operational metrics</p><h3>Dashboard metrics stay honest</h3><p>Rates are computed from persisted records. When there is no data, PresenceGuard shows an empty state instead of inventing a chart.</p><button class="text-button" data-view="dashboard">Open overview →</button></article><article class="panel report-card"><span class="report-icon navy">⌁</span><p class="eyebrow">Research boundary</p><h3>Biometric scores are not verdicts</h3><p>Similarity is retained for operator review only. Ordinary participants never see it as a claim of unquestionable identity.</p><button class="text-button" data-view="research">Read the methodology →</button></article></section>`; }
+
+async function renderAudit(screen) { const logs = await api("/api/v1/admin/audit-logs"); screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">Accountability</p><h2>Every important override leaves an evidence trail.</h2><p class="muted">Audit entries identify the actor, target, time, and reason without storing raw camera frames.</p></div></div><section class="panel audit-list">${logs.length ? logs.map((log) => `<div class="audit-row"><span class="audit-symbol">${log.action.startsWith("auth") ? "↗" : log.action.startsWith("face") ? "◎" : "✓"}</span><div><strong>${escapeHtml(log.action)}</strong><p>${escapeHtml(log.target_type)} · ${escapeHtml(log.target_id)}${log.reason ? ` · ${escapeHtml(log.reason)}` : ""}</p></div><time>${formatTimestamp(log.occurred_at)}</time></div>`).join("") : emptyState("No audit events yet", "Administrative actions will appear here as the workspace is used.")}</section>`; }
+
+async function renderCheckin(screen) { const sessions = await api("/api/v1/sessions"); const active = sessions.filter((session) => session.status === "active"); screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">Secure check-in</p><h2>Be present, then be recorded.</h2><p class="muted">Choose the active session you are attending. Face matching and liveness are separate security problems.</p></div>${badge(state.user.enrollment_status)}</div>${active.length ? `<div class="checkin-layout"><section class="panel session-choice"><span class="eyebrow">Active sessions</span><h3>Where are you checking in?</h3>${active.map((session, index) => `<label class="session-option"><input type="radio" name="checkin-session" value="${session.session_id}" ${index === 0 ? "checked" : ""}/><span><strong>${escapeHtml(session.title)}</strong><small>${escapeHtml(session.course)} · closes ${escapeHtml(session.check_in_close)}</small></span><i>○</i></label>`).join("")}</section><section class="panel camera-card"><div class="camera-heading"><div><span class="eyebrow">Identity verification</span><h3>Look into the camera</h3></div><span class="research-badge">Local only</span></div>${cameraMarkup("checkin-camera", "Start camera", "Capture & verify")}</section></div>` : emptyState("No active sessions", "Your available check-in opportunities will appear here once an administrator opens a session.", `<button class="button ghost" data-view="history">View attendance history</button>`)}`; }
+
+async function renderHistory(screen) { const history = await api("/api/v1/attendance/history"); screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">Your record</p><h2>Attendance history</h2><p class="muted">A transparent view of the attendance events attached to your account.</p></div></div><section class="panel table-panel">${history.length ? `<div class="filter-row compact-row"><div class="filter-tabs"><button class="filter active">All</button><button class="filter">Present</button><button class="filter">Late</button><button class="filter">Excused</button></div><span class="muted">${history.length} record${history.length === 1 ? "" : "s"}</span></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Date</th><th>Check-in</th><th>Status</th><th>Method</th></tr></thead><tbody>${history.map(historyRow).join("")}</tbody></table></div>` : emptyState("No attendance history yet", "Your completed attendance records will appear here.")}</section>`; }
+
+function historyRow(record) { return `<tr><td><strong>${escapeHtml(record.session_title)}</strong><small>${escapeHtml(record.course)}</small></td><td>${formatDate(record.session_date)}</td><td>${formatTimestamp(record.check_in_timestamp)}</td><td>${badge(record.status)}${record.manually_adjusted ? `<small>${escapeHtml(record.adjustment_reason || "Manually adjusted")}</small>` : ""}</td><td>${badge(record.verification_method)}</td></tr>`; }
+
+function renderEnrollment(screen) { const admin = state.user.role === "admin"; const target = admin ? state.target : state.user; screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">${admin ? "Participant care" : "Biometric minimisation"}</p><h2>${admin ? `Enrol face for ${escapeHtml(target?.display_name || "a participant")}` : "Set up face verification"}</h2><p class="muted">Consent first. Capture multiple samples. Generate the encrypted template locally. Discard the raw frames.</p></div>${badge(admin ? "admin action" : state.user.enrollment_status)}</div><section class="enrollment-layout"><section class="panel enrollment-copy"><span class="large-number">01</span><h3>Before you begin</h3><ul class="check-list"><li>Use even lighting and keep one face in frame.</li><li>Move slightly between samples; heavy obstruction can reduce quality.</li><li>No ordinary photographs are retained by the application.</li><li>Liveness is not validated in this research build.</li></ul><div class="privacy-callout"><strong>What is stored?</strong><p>An encrypted numerical template for comparison—not a face gallery.</p></div></section><section class="panel camera-card"><div class="camera-heading"><div><span class="eyebrow">${admin ? "Admin-assisted enrolment" : "Your consent"}</span><h3>Capture a private template</h3></div></div>${admin ? `<label class="inline-label">Participant ID<input id="enroll-target" value="${escapeHtml(target?.user_id || "")}" placeholder="student-042" /></label>` : ""}<label class="consent-box"><input id="enroll-consent" type="checkbox" /><span><strong>I consent to local biometric template processing.</strong><small>I understand I can request re-enrolment or deletion.</small></span></label>${cameraMarkup("enroll-camera", "Start camera", "Capture enrolment")}</section></section>`; }
+
+function cameraMarkup(prefix, startLabel, actionLabel) { return `<div class="camera-module"><div class="camera-frame"><video id="${prefix}-video" playsinline muted aria-label="Live camera preview"></video><div class="guide" aria-hidden="true"></div><div id="${prefix}-state" class="camera-state">Camera idle</div></div><div class="camera-controls"><button class="button secondary dark" data-action="start-camera" data-prefix="${prefix}">${startLabel}</button><button class="button primary" data-action="camera-action" data-prefix="${prefix}">${actionLabel}</button></div><div id="${prefix}-result" class="camera-result" role="status" aria-live="polite"><strong>Ready when you are.</strong><span>Frames are processed in memory.</span></div></div>`; }
+
+function renderResearch(screen, publicPage = false) { const milestones = [
+  ["01", "Rethinking attendance", "We encountered proxy attendance and manual error. We asked whether identity itself could become the attendance credential. The finding was simple: identity verification would not solve the complete attendance problem.", "Problem", "Manual signatures, QR codes, ID cards and passwords can be shared or mis-recorded.", "Finding", "Face verification was worth investigating, but it was only a starting point."],
+  ["02", "Moving verification to the device", "Sending camera images to remote recognition services raised a privacy concern. The system moved face detection and feature extraction toward the local device.", "Experiment", "Camera → face detection → feature extraction → face template → verification.", "Result", "Local processing became a core design principle: fewer raw-image boundaries and faster local interactions where supported."],
+  ["03", "Stop storing faces like photos", "A face image contains more visual information than attendance needs. The platform shifted to encrypted numerical templates and discarded unnecessary raw frames after processing.", "Problem", "Collecting excessive biometric imagery and encrypting it later is still excessive collection.", "Lesson", "Biometric minimisation comes before encryption."],
+  ["04", "Identity wasn't enough", "A correctly verified participant could still press the button twice. The platform added session-aware, server/database-level duplicate protection.", "Rule", "One participant → one valid attendance record → per session.", "Improvement", "Face match + session validation + database uniqueness turned an identity result into an attendance transaction."],
+  ["05", "The photograph problem", "Face verification asks whether a face resembles the enrolled identity. It does not prove that a live human is present. Printed photos, screens and replayed media remain presentation-attack concerns.", "Boundary", "Identity verification and liveness / presentation-attack detection are separate problems.", "Status", "This build exposes a liveness provider seam and labels it unavailable; it does not fake a security claim."],
+  ["06", "Knowing the account first", "Biometrics should not replace the account system. Authenticated users, expiring sessions and role-based access were introduced before the face check.", "Flow", "Account authentication → session authorization → face verification → liveness layer → attendance rules.", "Learning", "Authentication establishes the digital account. Biometrics confirms the person. Rules validate the event."],
+  ["07", "Building the attendance engine", "The project grew from a recognition demo into sessions, check-in windows, late thresholds, history, reporting and eligibility-aware workflows.", "Question", "Not only “Can this person be recognised?” but “Should this participant register attendance right now?”", "Outcome", "Attendance became a persisted domain, not an isolated model response."],
+  ["08", "Humans still need oversight", "Approved absence, accessibility needs, device failure and configuration mistakes cannot all be automated away. Admin corrections now require a reason and create an audit entry.", "Principle", "Automation needs accountability, not invisible overrides.", "Capability", "Operators can inspect, correct, report and review failed attempts without touching biometric templates."],
+  ["09", "PresenceGuard today", "The current product connects authenticated accounts, active sessions, local face processing, a liveness boundary, duplicate checks, encrypted storage and administrative reporting.", "Pipeline", "Authenticated user → active session → camera → local processing → face verification → liveness layer → eligibility → attendance engine → encrypted records → audit/reporting.", "Capabilities", "Identity · Privacy · Attendance · Administration — connected to real persisted state."],
+  ["10", "The research is not finished", "Further work needs validated presentation-attack detection, subject/session-disjoint evaluation, lighting and camera studies, accessibility testing, institutional identity, retention policy review, threat modelling and independent security review.", "Honesty", "No 100% accuracy, fraud-proof, impossible-to-spoof or compliance claims are made here.", "Conclusion", "Trustworthy biometric attendance requires privacy, identity, security, usability and institutional controls working together."],
+]; screen.innerHTML = `<div class="research-hero"><div><p class="eyebrow">A living engineering record</p><h2>From face verification experiment<br /><em>to PresenceGuard.</em></h2><p>PresenceGuard began with a simple question: can attendance identity verification happen locally, without continuously storing facial photographs or depending entirely on cloud recognition? Each limitation shaped the next iteration.</p></div><div class="hero-orbit"><span>01</span><i></i><b>Research<br />journey</b></div></div><section class="story-intro"><div class="story-label">Cause<br />→ effect</div><p>We encountered a problem → investigated it → learned something → changed the system. The product is the evidence trail of that sequence.</p></section><section class="timeline">${milestones.map(([number, title, copy, label, detail, label2, detail2]) => `<article class="milestone"><div class="milestone-marker"><span>${number}</span><i></i></div><div class="milestone-body"><p class="eyebrow">Milestone ${number}</p><h3>${escapeHtml(title)}</h3><p class="milestone-copy">${escapeHtml(copy)}</p><div class="finding-grid"><div><span>${escapeHtml(label)}</span><strong>${escapeHtml(detail)}</strong></div><div><span>${escapeHtml(label2)}</span><strong>${escapeHtml(detail2)}</strong></div></div></div></article>`).join("")}</section><section class="research-cta"><p class="eyebrow">The promise</p><h3>PresenceGuard does not claim that face recognition solves attendance.</h3><p>It demonstrates how privacy, identity, security, usability and institutional controls must work together before biometric attendance can become trustworthy.</p>${publicPage ? `<button class="button primary" data-action="back-login">Return to sign in →</button>` : ""}</section>`; if (publicPage) document.querySelector("[data-action=back-login]").addEventListener("click", renderLogin); }
+
+function renderPrivacy(screen) { screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">Privacy by design</p><h2>Your face is not an attendance spreadsheet.</h2><p class="muted">The product is designed to minimise biometric data and make the remaining trust boundaries visible.</p></div></div><section class="privacy-grid"><article class="panel privacy-card featured"><span class="privacy-number">01</span><h3>Processed locally</h3><p>Camera frames are decoded and analysed on the local PresenceGuard service. The application does not call a cloud recognition service.</p></article><article class="panel privacy-card"><span class="privacy-number">02</span><h3>Encrypted templates</h3><p>Stored biometric references are encrypted numerical templates, not ordinary photographs.</p></article><article class="panel privacy-card"><span class="privacy-number">03</span><h3>Raw frames are ephemeral</h3><p>Capture uploads are processed in memory and are not written to the application database.</p></article><article class="panel privacy-card"><span class="privacy-number">04</span><h3>Separate security problems</h3><p>Face similarity does not prove liveness. This build labels liveness unavailable and keeps a provider seam for future validation.</p></article><article class="panel privacy-card"><span class="privacy-number">05</span><h3>People can be corrected</h3><p>Institutional attendance needs authorised alternatives for camera failure, accessibility, and approved exceptions.</p></article><article class="panel privacy-card"><span class="privacy-number">06</span><h3>Accountability is visible</h3><p>Important administrative corrections and enrolment changes create audit records with reasons.</p></article></section><div class="disclaimer"><strong>Research boundary</strong><p>Privacy-conscious design reduces exposure; it does not make the system impossible to hack or 100% secure. Production use would require managed keys, institutional identity, validated liveness, retention controls, threat modelling, and independent review.</p></div>`; }
+
+function renderProfile(screen) { screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">Your account</p><h2>Profile & access</h2><p class="muted">Institutional SSO can be added behind this account boundary later; it is not claimed in this local build.</p></div></div><section class="profile-grid"><section class="panel profile-card"><div class="profile-avatar">${escapeHtml(initials(state.user.display_name))}</div><h3>${escapeHtml(state.user.display_name)}</h3><p class="muted">${escapeHtml(state.user.email)}</p><div class="profile-lines"><div><span>Participant ID</span><strong>${escapeHtml(state.user.user_id)}</strong></div><div><span>Username</span><strong>${escapeHtml(state.user.username)}</strong></div><div><span>Account</span>${badge(state.user.status)}</div></div></section><section class="panel"><span class="eyebrow">Authentication</span><h3>Account first, face second.</h3><p class="muted long-copy">Your expiring browser session establishes your digital account. Face verification is then used as an attendance confirmation inside an active session; it does not replace your account credentials.</p><div class="privacy-callout"><strong>Need an alternative?</strong><p>Ask an administrator about an authorised manual attendance path if the camera is unavailable or inaccessible.</p></div></section></section>`; }
+
+function renderSettings(screen) { screen.innerHTML = `<div class="page-intro"><div><p class="eyebrow">Workspace guardrails</p><h2>Settings</h2><p class="muted">Selected product defaults are configured through the local environment, keeping secrets out of the browser.</p></div></div><section class="settings-list panel"><div class="setting-row"><div><strong>Face verification</strong><p>YuNet + SFace local pipeline</p></div>${badge("enabled", "positive")}</div><div class="setting-row"><div><strong>Liveness provider</strong><p>Separate provider interface; no validated provider configured</p></div>${badge("unavailable", "warning")}</div><div class="setting-row"><div><strong>Duplicate protection</strong><p>Unique participant/session record plus transactional writes</p></div>${badge("enabled", "positive")}</div><div class="setting-row"><div><strong>Image retention</strong><p>Raw upload frames are not persisted</p></div>${badge("none", "positive")}</div></section><div class="disclaimer"><strong>Configuration note</strong><p>Production deployment should manage secrets, session settings, retention, institutional authentication, and liveness configuration outside the front-end.</p></div>`; }
+
+async function startCamera(prefix) { try { if (!navigator.mediaDevices?.getUserMedia) throw new Error("This browser does not provide camera access."); state.cameraStream?.getTracks().forEach((track) => track.stop()); const video = document.querySelector(`#${prefix}-video`); state.cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 720 } }, audio: false }); video.srcObject = state.cameraStream; await video.play(); document.querySelector(`#${prefix}-state`).textContent = "Camera ready · one face only"; setCameraResult(prefix, "Ready", "Centre one face inside the guide."); } catch (error) { setCameraResult(prefix, "Camera blocked", error.message || "Allow camera access in browser settings.", true); } }
+
+function setCameraResult(prefix, title, message, isError = false) { const element = document.querySelector(`#${prefix}-result`); if (!element) return; element.classList.toggle("error", isError); element.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(message)}</span>`; }
+
+async function captureFrame(prefix) { const video = document.querySelector(`#${prefix}-video`); if (!state.cameraStream || video.readyState < 2) throw new Error("Start the camera first."); canvas.width = video.videoWidth; canvas.height = video.videoHeight; const context = canvas.getContext("2d", { alpha: false }); context.translate(canvas.width, 0); context.scale(-1, 1); context.drawImage(video, 0, 0, canvas.width, canvas.height); return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not capture a frame.")), "image/jpeg", 0.88)); }
+
+async function cameraAction(prefix) { const button = document.querySelector(`[data-action=camera-action][data-prefix="${prefix}"]`); button.disabled = true; try { if (prefix === "checkin-camera") { const session = document.querySelector("input[name=checkin-session]:checked")?.value; if (!session) throw new Error("Choose an active session first."); setCameraResult(prefix, "Processing", "Checking quality, then verifying your encrypted reference…"); const frame = await captureFrame(prefix); const form = new FormData(); form.append("image", frame, "verification.jpg"); const response = await api(`/api/v1/sessions/${encodeURIComponent(session)}/check-in`, { method: "POST", headers: { "Idempotency-Key": crypto.randomUUID() }, body: form }); if (response.status === "verified") setCameraResult(prefix, response.reason === "late" ? "Checked in late" : "Attendance recorded", `${formatTimestamp(response.occurred_at)} · liveness layer unavailable`); else if (response.status === "duplicate") setCameraResult(prefix, "Already checked in", "Your session already has an attendance record."); else setCameraResult(prefix, "Not verified", "Adjust your position and try again.", true); } else { const consent = document.querySelector("#enroll-consent"); if (!consent.checked) throw new Error("Confirm consent before enrolment."); const targetId = state.user.role === "admin" ? document.querySelector("#enroll-target").value.trim() : state.user.user_id; if (!targetId) throw new Error("Enter a participant ID."); const form = new FormData(); form.append("consent_confirmed", "true"); if (state.user.role === "admin") form.append("display_name", state.target?.display_name || targetId); for (let index = 0; index < 10; index += 1) { setCameraResult(prefix, "Capturing", `Hold still and move slightly · ${index + 1} / 10`); form.append("images", await captureFrame(prefix), `enrollment-${index + 1}.jpg`); await new Promise((resolve) => setTimeout(resolve, 120)); } setCameraResult(prefix, "Encrypting", "Creating the local biometric template…"); const route = state.user.role === "admin" ? `/api/v1/participants/${encodeURIComponent(targetId)}/enrollment` : "/api/v1/me/enrollment"; const payload = await api(route, { method: "POST", body: form }); setCameraResult(prefix, "Enrolment complete", `${payload.accepted_samples} encrypted references stored; raw frames discarded.`); state.user.enrollment_status = "enrolled"; state.user.enrollment_samples = payload.accepted_samples; } } catch (error) { setCameraResult(prefix, "Action stopped", error.message, true); } finally { button.disabled = false; } }
+
+function bindActions() { document.querySelectorAll("#screen [data-view]").forEach((button) => button.addEventListener("click", () => { state.view = button.dataset.view; renderView(); })); document.querySelectorAll("[data-action=toggle-create-session]").forEach((button) => button.addEventListener("click", () => document.querySelector("#create-session")?.classList.toggle("hidden"))); document.querySelector("#session-form")?.addEventListener("submit", createSession); document.querySelectorAll("[data-action=session-status]").forEach((button) => button.addEventListener("click", () => updateSession(button.dataset.id, button.dataset.status))); document.querySelectorAll("[data-action=toggle-create-participant]").forEach((button) => button.addEventListener("click", () => document.querySelector("#create-participant")?.classList.toggle("hidden"))); document.querySelector("#participant-form")?.addEventListener("submit", createParticipant); document.querySelectorAll("[data-action=toggle-user]").forEach((button) => button.addEventListener("click", () => toggleUser(button.dataset.id, button.dataset.status))); document.querySelectorAll("[data-action=enroll-user]").forEach((button) => button.addEventListener("click", () => { state.target = { user_id: button.dataset.id, display_name: button.dataset.name }; state.view = "enrollment"; renderView(); })); document.querySelector("#attendance-session")?.addEventListener("change", (event) => { state.selectedSession = event.target.value; renderView(); }); document.querySelectorAll("[data-action=correct-attendance]").forEach((button) => button.addEventListener("click", () => correctAttendance(button.dataset))); document.querySelectorAll("[data-action=start-camera]").forEach((button) => button.addEventListener("click", () => startCamera(button.dataset.prefix))); document.querySelectorAll("[data-action=camera-action]").forEach((button) => button.addEventListener("click", () => cameraAction(button.dataset.prefix))); }
+
+async function createSession(event) { event.preventDefault(); const form = new FormData(event.currentTarget); const button = event.currentTarget.querySelector("button[type=submit]"); button.disabled = true; try { await api("/api/v1/admin/sessions", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) }); state.view = "sessions"; renderView(); } catch (error) { document.querySelector("#session-error").textContent = error.message; button.disabled = false; } }
+async function updateSession(id, status) { try { await api(`/api/v1/admin/sessions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }); renderView(); } catch (error) { window.alert(error.message); } }
+async function createParticipant(event) { event.preventDefault(); const form = new FormData(event.currentTarget); const button = event.currentTarget.querySelector("button[type=submit]"); button.disabled = true; try { await api("/api/v1/admin/participants", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) }); state.view = "participants"; renderView(); } catch (error) { document.querySelector("#participant-error").textContent = error.message; button.disabled = false; } }
+async function toggleUser(id, status) { try { await api(`/api/v1/admin/participants/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }); renderView(); } catch (error) { window.alert(error.message); } }
+async function correctAttendance(data) { const status = window.prompt(`New status for ${data.name} (present, late, absent, excused, manually_added):`, "excused"); if (!status) return; const reason = window.prompt("Reason (required):", "Approved exception"); if (!reason) return; const route = data.attendance ? `/api/v1/admin/attendance/${data.attendance}` : `/api/v1/admin/sessions/${data.session}/attendance/${data.participant}`; try { await api(route, { method: data.attendance ? "PATCH" : "POST", body: JSON.stringify({ status, reason }) }); renderView(); } catch (error) { window.alert(error.message); } }
+
+window.addEventListener("beforeunload", () => state.cameraStream?.getTracks().forEach((track) => track.stop()));
+
+(async function bootstrap() { try { const payload = await api("/api/v1/auth/me"); state.user = payload.user; } catch (_) { state.user = null; } renderView(); })();

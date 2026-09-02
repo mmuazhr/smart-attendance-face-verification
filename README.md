@@ -1,6 +1,10 @@
 # PresenceGuard
 
-PresenceGuard is a local, privacy-first reference implementation for face verification in attendance workflows. It modernises a 2023 Malaysian university FYP that used a custom Siamese CNN, webcam capture, and Firebase-style attendance records into a typed FastAPI application with YuNet detection, SFace embeddings, encrypted multi-sample templates, and transactional SQLite attendance events.
+PresenceGuard is a local, privacy-first attendance platform with authenticated accounts,
+session-aware check-in, admin operations, auditable corrections, and local face verification.
+It modernises a 2023 Malaysian university FYP that used a custom Siamese CNN, webcam capture,
+and Firebase-style attendance records into a typed FastAPI application with YuNet detection,
+SFace embeddings, encrypted multi-sample templates, and transactional SQLite attendance events.
 
 > Research and portfolio reference only. This project does not provide validated liveness detection, institutional authentication, demographic fairness evidence, or production biometric assurance. Historical face data, attendance records, and model weights are private and excluded from Git.
 
@@ -10,13 +14,18 @@ The original FYP explored whether deep-learning face verification could reduce m
 
 ## What it does
 
-1. An authorized operator enrolls a participant after explicit consent.
-2. The local camera or API sends short-lived frames; the server does not write raw images.
-3. YuNet requires exactly one sufficiently large face and applies lighting/sharpness gates.
-4. SFace produces a normalized 128-dimensional embedding.
-5. AES-256-GCM encrypts a multi-sample template bound to the participant ID.
-6. A verification query compares against the template and applies a calibrated threshold.
-7. A successful match writes one UTC attendance event with idempotency and duplicate-window protection.
+1. Admins create participant accounts and attendance sessions with real persisted rules.
+2. Users sign in through an expiring, signed browser session; server-side RBAC protects routes.
+3. A participant gives explicit consent, captures multiple samples, and receives an encrypted
+   local face template without raw-image retention.
+4. A user selects an active session; the server checks account, window, enrolment, and status
+   before face verification.
+5. A successful match writes one participant/session attendance record with present/late
+   classification and database-level uniqueness.
+6. Admins manage sessions and participants, inspect failed attempts, correct exceptions with
+   reasons, review audit logs, and export CSV reports.
+7. The Research Journey explains the cause-and-effect evolution from face experiment to
+   auditable attendance platform.
 
 See [`docs/architecture.md`](docs/architecture.md) for the component and trust-boundary diagrams.
 
@@ -44,6 +53,10 @@ uv run presenceguard generate-key
 
 Copy the generated key into `PRESENCEGUARD_TEMPLATE_KEY` in `.env`, then set a local operator token in `PRESENCEGUARD_ADMIN_TOKEN`. Do not commit `.env`.
 
+Set `PRESENCEGUARD_ADMIN_PASSWORD` to a local password with at least 10 characters. On first
+startup it bootstraps the `admin` account. The old admin token remains only as a compatibility
+boundary for the original enrollment API; use the account login for the product UI.
+
 Download the checksummed OpenCV Zoo models and initialize the private database:
 
 ```bash
@@ -64,7 +77,11 @@ The compose file publishes only `127.0.0.1:8000` and mounts the database separat
 
 ## API outline
 
-Enrollment is an admin action and requires a multipart request with 3–50 images in the default configuration:
+The product API includes account login (`/api/v1/auth/login`), session management
+(`/api/v1/admin/sessions`), participant management (`/api/v1/admin/participants`), authenticated
+session check-in (`/api/v1/sessions/{session_id}/check-in`), participant history, admin correction,
+audit logs, and CSV export. Enrollment is a consented multipart action with 3–50 images in the
+default configuration:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/participants/student-042/enrollment \
@@ -84,7 +101,10 @@ curl -X POST http://127.0.0.1:8000/api/v1/participants/student-042/verification 
   -F image=@query.jpg
 ```
 
-The API returns `verified`, `duplicate`, or `rejected`; a rejected match never writes attendance. See the OpenAPI document at `/docs` while the server is running.
+The legacy API returns `verified`, `duplicate`, or `rejected`; a rejected match never writes
+attendance. The session check-in route derives the participant from the authenticated account
+and returns a duplicate result without creating another record. See the OpenAPI document at
+`/docs` while the server is running.
 
 ## Privacy and security boundaries
 
@@ -92,6 +112,10 @@ The API returns `verified`, `duplicate`, or `rejected`; a rejected match never w
 - Only encrypted numerical templates and attendance events persist locally.
 - Templates use AES-256-GCM with random nonces and participant-bound authenticated data.
 - Enrollment, deletion, and attendance reads require a local admin token.
+- Product routes use expiring signed browser sessions and server-side role authorization;
+  participant history is scoped to the logged-in account.
+- Session attendance has a unique `(participant_id, session_id)` constraint and transactional
+  writes; manual changes require a reason and persist an audit entry.
 - Request logs are compact JSON containing route templates, status, duration, and a request ID; they omit URLs, bodies, IPs, participant IDs, images, embeddings, and tokens.
 - Model downloads use fixed HTTPS sources and SHA-256 verification before atomic installation.
 - The interface is localhost-first and contains no cloud biometric call.
@@ -127,8 +151,8 @@ The private-model smoke test is skipped unless authorized model files and face d
 ## Repository layout
 
 ```text
-src/presenceguard/       Typed application, domain, persistence, crypto, and model boundary
-src/presenceguard/static/Camera-first local web interface
+src/presenceguard/       Typed application, domain, auth, persistence, crypto, and model boundary
+src/presenceguard/static/Responsive authenticated product interface
 tests/                   Unit, API, repository, model-download, and private-model smoke tests
 scripts/                 Historical audit, notebook summary, and baseline evaluation tools
 docs/                    Architecture, audit, results, security, evolution, and interview notes
@@ -139,6 +163,12 @@ models/README.md         Model card, checksums, licensing, and provenance caveat
 ## Limitations and next research steps
 
 The recovered archive does not contain the claimed 30-person UKM participant labels, consent records, or original split manifest. The strongest modern result is therefore narrow evidence for one enrolled person, not a fairness or production benchmark. SFace model training-data provenance also requires separate review before commercial or high-risk use.
+
+The attendance platform is complete enough for local research/demo operation, but the biometric
+layer still has no validated presentation-attack detector. Liveness is an explicit provider
+boundary and is reported as unavailable. Production use would additionally require institutional
+SSO, managed key storage, retention enforcement, a tested non-biometric fallback, accessibility
+testing, independent security review, and representative subject/session-disjoint evaluation.
 
 Meaningful next steps are a consented multi-subject evaluation with subject/session-disjoint splits, validated presentation-attack detection, campus SSO plus a second factor, measured hardware-specific latency, key rotation, and a non-biometric attendance fallback.
 

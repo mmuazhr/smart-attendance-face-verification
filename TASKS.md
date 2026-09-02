@@ -65,3 +65,17 @@
 ## Final Quality Gate
 
 - [x] All understanding, baseline, engineering, AI/data, validation, documentation, and GitHub checks in PROJECT_INSTRUCTIONS.md are satisfied or transparently documented as limitations.
+
+## Complete Attendance Platform Upgrade
+
+- [x] Record the master-prompt repository assessment and staged implementation plan in `docs/product-upgrade-plan.md`.
+- [x] Add additive account, role, attendance-session, attendance-record, verification-attempt, and audit-log schema.
+- [x] Add hashed-password login, expiring signed sessions, logout, and server-side RBAC.
+- [x] Add authenticated participant check-in, session windows, present/late policy, and database uniqueness.
+- [x] Add participant self-enrolment and admin participant/session workflows.
+- [x] Add admin dashboard metrics, roster management, correction workflow, audit API, and CSV export.
+- [x] Add explicit liveness-provider boundary with honest unavailable status.
+- [x] Replace the single camera console with a responsive role-aware product UI.
+- [x] Add the ten-milestone Research Journey storytelling experience and privacy page.
+- [x] Add end-to-end tests for authentication, RBAC, sessions, enrolment, check-in, duplication, correction, and auditability.
+- [x] Validate the new browser workflows against the restarted local server; real camera capture remains an operator step.

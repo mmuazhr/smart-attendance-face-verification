@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     sface_model_path: Path = Path("models/face_recognition_sface_2021dec.onnx")
     template_key: str = ""
     admin_token: str = ""
+    admin_username: str = "admin"
+    admin_password: str = ""
+    session_secret: str = ""
+    session_ttl_hours: int = Field(default=8, ge=1, le=168)
+    default_check_in_window_minutes: int = Field(default=45, ge=5, le=1_440)
+    default_late_threshold_minutes: int = Field(default=10, ge=0, le=1_440)
+    liveness_required: bool = False
     match_threshold: float = Field(default=0.554712, ge=-1.0, le=1.0)
     detection_threshold: float = Field(default=0.9, ge=0.1, le=1.0)
     duplicate_window_seconds: int = Field(default=300, ge=0, le=86_400)
@@ -39,3 +46,11 @@ class Settings(BaseSettings):
                 "PRESENCEGUARD_TEMPLATE_KEY is required; run `presenceguard generate-key`"
             )
         return self.template_key
+
+    def require_session_secret(self) -> str:
+        secret = self.session_secret or self.template_key
+        if not secret:
+            raise ValueError(
+                "PRESENCEGUARD_SESSION_SECRET or PRESENCEGUARD_TEMPLATE_KEY is required"
+            )
+        return secret

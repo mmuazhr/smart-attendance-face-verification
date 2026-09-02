@@ -18,7 +18,7 @@ flowchart LR
     end
 
     subgraph datastore ["Local protected storage"]
-        sqlite["SQLite participants and attendance"]
+        sqlite["SQLite accounts, sessions, attendance, audit"]
         models["Checksummed ONNX models"]
     end
 
@@ -31,6 +31,8 @@ flowchart LR
     faceEngine -->|"Read weights"| models
     crypto -->|"Encrypted templates only"| sqlite
     attendance -->|"Transactional event write"| sqlite
+    auth["Expiring signed session + RBAC"] --> api
+    attempts["Verification attempts"] --> sqlite
 ```
 
 ## Component Responsibilities
@@ -43,7 +45,7 @@ flowchart LR
 | Enrollment service | Consent, sample-count policy, rejected-frame accounting, template creation | Raw frame persistence |
 | Verification service | Template lookup/decryption, maximum-reference similarity, threshold decision | Authentication or liveness claims |
 | Template cipher | AES-256-GCM, random nonce, participant-bound associated data | Key storage or rotation orchestration |
-| Attendance repository | UTC events, idempotency, duplicate window, cascade deletion | Identity proof beyond the verification result |
+| Attendance repository | UTC events, sessions, uniqueness, audit, verification attempts | Identity proof beyond the verification result |
 | Model downloader | Fixed HTTPS sources and SHA-256 verification | Automatic trust in changed upstream files |
 
 ## Verification Flow
@@ -66,8 +68,21 @@ Raw images are absent from the schema by design.
 ## Trust Boundaries
 
 - The default bind address is `127.0.0.1`.
-- Enrollment, deletion, and attendance listing require `X-Admin-Token`.
+- New product routes require an expiring signed browser session and server-side role checks;
+  legacy enrollment/deletion/listing also retain `X-Admin-Token` compatibility.
 - Verification requires `Idempotency-Key`, which also forces cross-origin browsers to preflight.
 - The encryption key and admin token are environment configuration and must not enter Git or logs.
 - Route-template logging omits participant IDs, query strings, request bodies, embeddings, images, and client IPs.
 - A real deployment still needs institutional authentication, TLS termination, key management, authorization roles, retention enforcement, and validated liveness or a second factor.
+
+## Product flow
+
+```text
+USER LOGIN → SESSION SELECTION → ELIGIBILITY CHECK → CAMERA → FACE DETECTION
+→ LOCAL FEATURE EXTRACTION → TEMPLATE COMPARISON → LIVENESS PROVIDER BOUNDARY
+→ ATTENDANCE BUSINESS RULES → DATABASE TRANSACTION → AUDIT / REPORTING
+```
+
+The current build implements the account, session, attendance, audit, and reporting layers.
+Its liveness provider returns `unavailable` until a validated presentation-attack detector is
+integrated; face matching is never presented as liveness.

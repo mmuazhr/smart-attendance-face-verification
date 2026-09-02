@@ -2,15 +2,15 @@
 
 ## Current Phase
 
-Published portfolio reference.
+Complete local attendance platform upgrade and published portfolio reference.
 
 ## Last Completed
 
-Recovered and independently measured the legacy artifact, selected and implemented the local YuNet/SFace architecture, added privacy-safe persistence and API boundaries, completed the portfolio documentation, published the intended public GitHub repository, and verified its CI run.
+Recovered and independently measured the legacy artifact, selected and implemented the local YuNet/SFace architecture, added privacy-safe persistence and API boundaries, completed the portfolio documentation, published the intended public GitHub repository, and upgraded the reference into an authenticated attendance platform with sessions, RBAC, dashboards, reports, audit logs, manual corrections, and a Research Journey UI.
 
 ## Currently Working On
 
-No current publication blocker. The application remains a research/portfolio reference rather than a production biometric system.
+No current publication blocker. The application is locally usable as a research/demo platform, while the biometric layer remains a research component rather than production assurance.
 
 ## Important Findings
 
@@ -41,19 +41,22 @@ Legacy artifact independently reproduced. Deterministic replay: 77.8% accuracy; 
 - Use multi-sample encrypted templates; do not persist raw enrollment or verification images.
 - Treat absence of liveness as an explicit deployment limitation, not a solved feature.
 - The modern application now supports admin-authorized enrollment, 50-frame quality-filtered capture, AES-GCM template encryption, local SFace verification, idempotent attendance writes, duplicate-window suppression, admin-only attendance reads, and participant deletion.
+- The complete platform layer now adds hashed-password accounts, expiring signed sessions, server-side admin/participant RBAC, persisted attendance sessions, present/late classification, unique participant/session records, participant history, manual correction with required reasons, verification-attempt records, audit logs, CSV reporting, and an explicit unavailable liveness provider boundary.
+- The static browser experience is now a responsive role-aware product shell with login, admin/user navigation, meaningful empty/loading/error states, camera workflows, privacy guidance, and a ten-milestone Research Journey storytelling page.
 - The real private-artifact E2E run accepted 48/50 enrollment frames, verified a separate-session query at 0.8212, wrote one attendance record, suppressed the immediate duplicate, returned the admin attendance view, and deleted the participant.
 - Automated suite: 17 tests pass with 85% package statement coverage after observability coverage was added; Ruff, strict MyPy, Bandit, and pip-audit pass. Browser QA at 390x844 shows no horizontal overflow or console errors.
 
 ## Known Blockers
 
-The original application source may be missing, and the biometric system still has no validated liveness detector or institutional authentication by design. Docker was not installed locally, so container execution remains CI/deployment validation work.
+The original application source may be missing, and the biometric system still has no validated liveness detector, institutional SSO, or production biometric assurance by design. The current product supports a manual admin fallback but has not completed a separate accessibility-focused workflow study. Docker was not installed locally, so container execution remains CI/deployment validation work.
 
 ## Next Actions
 
 1. Expand the consented, subject/session-disjoint evaluation dataset.
 2. Add validated presentation-attack detection and institutional identity.
 3. Revisit container execution and deployment hardening on a host with Docker.
+4. Test camera, fallback, accessibility, and operational recovery journeys with representative users.
 
 ## Last Verified
 
-2026-09-02; public repository `mmuazhr/smart-attendance-face-verification` verified on `main` at `4798e74`; CI run `33642116776` passed.
+2026-09-02; local platform browser smoke check passed at `http://127.0.0.1:8000`; public repository `mmuazhr/smart-attendance-face-verification` remains verified on `main` with passing CI.

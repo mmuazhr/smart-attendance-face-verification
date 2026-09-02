@@ -55,3 +55,28 @@ class TemplateIntegrityError(PresenceGuardError):
 class AdminAccessError(PresenceGuardError):
     code = "admin_access_denied"
     status_code = 403
+
+
+class AuthenticationError(PresenceGuardError):
+    code = "authentication_required"
+    status_code = 401
+
+
+class AuthorizationError(PresenceGuardError):
+    code = "not_authorized"
+    status_code = 403
+
+
+class SessionNotFoundError(PresenceGuardError):
+    code = "session_not_found"
+    status_code = 404
+
+
+class SessionClosedError(PresenceGuardError):
+    code = "session_unavailable"
+    status_code = 409
+
+
+class AttendanceAlreadyRecordedError(PresenceGuardError):
+    code = "attendance_already_recorded"
+    status_code = 409
