@@ -29,34 +29,35 @@
 ## Modernisation
 
 - [x] Select the strongest direction while preserving the original research intent.
-- [ ] Implement a reproducible, privacy-preserving face-verification core.
-- [ ] Implement deterministic attendance-domain logic with duplicate and replay protection.
-- [ ] Add configuration, structured logging, error handling, and typed interfaces.
-- [ ] Add a restrained demo interface or CLI appropriate to the available artifacts.
-- [ ] Add data and model documentation with explicit ethical limitations.
+- [x] Implement a reproducible, privacy-preserving face-verification core.
+- [x] Implement deterministic attendance-domain logic with duplicate and replay protection.
+- [x] Add configuration, error handling, and typed interfaces.
+- [x] Add a restrained camera-first demo interface and CLI.
+- [x] Add structured privacy-safe logging.
+- [x] Add data and model documentation with explicit ethical limitations.
 
 ## Validation
 
-- [ ] Add unit tests for preprocessing, verification, thresholds, and attendance logging.
-- [ ] Add integration and end-to-end smoke tests.
-- [ ] Benchmark the original baseline and modern alternative on defensible splits.
-- [ ] Measure latency and document hardware/runtime assumptions.
-- [ ] Run formatting, linting, type checking, tests, package/build checks, and security scans.
+- [x] Add unit tests for preprocessing boundaries, verification, encryption, and attendance logging.
+- [x] Add integration, API, private-model, and end-to-end smoke tests.
+- [x] Benchmark the original baseline and modern alternative on defensible splits.
+- [x] Measure latency and document hardware/runtime assumptions.
+- [x] Run formatting, linting, type checking, tests, package/build checks, and security scans.
 
 ## Portfolio Documentation
 
-- [ ] Complete the portfolio-quality README.
-- [ ] Create docs/architecture.md.
-- [ ] Create docs/fyp-evolution.md.
-- [ ] Create docs/interview-brief.md.
-- [ ] Create data/README.md and model documentation.
+- [x] Complete the portfolio-quality README.
+- [x] Create docs/architecture.md.
+- [x] Create docs/fyp-evolution.md.
+- [x] Create docs/interview-brief.md.
+- [x] Create data/README.md and model documentation.
 - [ ] Add measured results and safe visual assets.
 
 ## Git and GitHub
 
 - [ ] Initialise Git and establish a meaningful commit history.
 - [ ] Confirm no pre-existing repository should be reused.
-- [ ] Scan history and working tree for secrets, personal data, biometric data, and oversized files.
+- [x] Scan history and working tree for secrets, personal data, biometric data, and oversized files.
 - [ ] Create or configure the GitHub repository.
 - [ ] Push without rewriting existing history.
 - [ ] Verify README rendering, links, repository description, topics, and published contents.

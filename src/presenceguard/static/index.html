@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="PresenceGuard local attendance verification console" />
+    <title>PresenceGuard · Local attendance verification</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23173b31'/%3E%3Ctext x='32' y='39' text-anchor='middle' font-family='sans-serif' font-size='20' font-weight='700' fill='white'%3EPG%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <div class="wordmark" aria-label="PresenceGuard">
+          <span class="mark" aria-hidden="true">PG</span>
+          <span>PresenceGuard</span>
+        </div>
+        <div class="local-badge"><span></span> Local processing</div>
+      </header>
+
+      <section class="intro">
+        <p class="eyebrow">Attendance, with an evidence trail</p>
+        <h1>Verify presence.<br /><em>Keep faces private.</em></h1>
+        <p class="lede">
+          A research reference for one-to-template face verification. Frames are processed in
+          memory; only encrypted numerical templates and successful attendance events persist.
+        </p>
+      </section>
+
+      <section class="workspace" aria-label="Verification workspace">
+        <div class="camera-panel">
+          <div class="camera-frame">
+            <video id="camera" playsinline muted aria-label="Live camera preview"></video>
+            <div class="guide" aria-hidden="true"><span></span></div>
+            <div id="camera-state" class="camera-state">Camera idle</div>
+          </div>
+          <button id="start-camera" class="button secondary" type="button">Start camera</button>
+        </div>
+
+        <div class="control-panel">
+          <div class="tabs" role="tablist" aria-label="Workflow">
+            <button class="tab active" data-panel="checkin" role="tab" aria-selected="true">
+              Check in
+            </button>
+            <button class="tab" data-panel="enroll" role="tab" aria-selected="false">
+              Enroll
+            </button>
+          </div>
+
+          <section id="checkin-panel" class="form-panel" aria-labelledby="checkin-title">
+            <p class="step">01 / verification</p>
+            <h2 id="checkin-title">Record attendance</h2>
+            <label for="checkin-id">Participant ID</label>
+            <input id="checkin-id" autocomplete="off" placeholder="e.g. student-042" />
+            <button id="verify" class="button primary" type="button">Capture &amp; verify</button>
+            <p class="microcopy">A rejected match never creates an attendance record.</p>
+          </section>
+
+          <section id="enroll-panel" class="form-panel hidden" aria-labelledby="enroll-title">
+            <p class="step">02 / enrollment</p>
+            <h2 id="enroll-title">Create a private template</h2>
+            <label for="enroll-id">Participant ID</label>
+            <input id="enroll-id" autocomplete="off" placeholder="e.g. student-042" />
+            <label for="display-name">Display name</label>
+            <input id="display-name" autocomplete="name" placeholder="Name shown locally" />
+            <label for="admin-token">Local admin token</label>
+            <input id="admin-token" type="password" autocomplete="off" placeholder="Set in .env" />
+            <label class="consent">
+              <input id="consent" type="checkbox" />
+              <span>I consent to local biometric template processing and understand I can delete it.</span>
+            </label>
+            <button id="enroll" class="button primary" type="button">
+              Capture enrollment burst
+            </button>
+            <p class="microcopy">Captures 50 short-lived frames; poor-quality frames are discarded.</p>
+          </section>
+
+          <div id="result" class="result" role="status" aria-live="polite">
+            <span class="result-kicker">Ready</span>
+            <strong>Start the camera to continue.</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="principles" aria-label="Privacy design">
+        <article><span>01</span><h3>No face gallery</h3><p>Raw frames are never written by the server.</p></article>
+        <article><span>02</span><h3>Encrypted templates</h3><p>AES-GCM protects stored 128D references.</p></article>
+        <article><span>03</span><h3>Fail closed</h3><p>No face, multiple faces, or weak quality means no attendance.</p></article>
+      </section>
+
+      <footer>
+        <p>Research reference · No liveness guarantee · Use a second factor for real deployment</p>
+      </footer>
+    </main>
+    <canvas id="capture-canvas" hidden></canvas>
+  </body>
+</html>

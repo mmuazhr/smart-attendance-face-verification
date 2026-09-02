@@ -35,7 +35,9 @@ def main() -> None:
 
     for index, cell in enumerate(notebook.get("cells", []), start=1):
         source = _text(cell.get("source"))
-        source_parts.append(f"# %% [{cell.get('cell_type', 'unknown')}] cell {index}\n{source.rstrip()}\n")
+        source_parts.append(
+            f"# %% [{cell.get('cell_type', 'unknown')}] cell {index}\n{source.rstrip()}\n"
+        )
         count = cell.get("execution_count")
         if isinstance(count, int):
             execution_counts.append(count)
@@ -54,7 +56,9 @@ def main() -> None:
         "language": notebook.get("metadata", {}).get("language_info", {}),
         "cells": len(notebook.get("cells", [])),
         "code_cells": sum(cell.get("cell_type") == "code" for cell in notebook.get("cells", [])),
-        "markdown_cells": sum(cell.get("cell_type") == "markdown" for cell in notebook.get("cells", [])),
+        "markdown_cells": sum(
+            cell.get("cell_type") == "markdown" for cell in notebook.get("cells", [])
+        ),
         "executed_code_cells": len(execution_counts),
         "maximum_execution_count": max(execution_counts, default=None),
         "output_types": output_types,

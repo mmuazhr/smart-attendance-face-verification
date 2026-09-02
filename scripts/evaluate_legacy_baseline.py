@@ -14,15 +14,14 @@ import platform
 import random
 import time
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 import numpy as np
 import tensorflow as tf
-
 
 SEED = 42
 
@@ -66,8 +65,8 @@ def legacy_replay(root: Path, seed: int = SEED) -> list[Pair]:
     rng.shuffle(positives)
     rng.shuffle(negatives)
     anchors, positives, negatives = anchors[:300], positives[:300], negatives[:300]
-    pairs = [Pair(a, p, 1) for a, p in zip(anchors, positives)]
-    pairs.extend(Pair(a, n, 0) for a, n in zip(anchors, negatives))
+    pairs = [Pair(a, p, 1) for a, p in zip(anchors, positives, strict=False)]
+    pairs.extend(Pair(a, n, 0) for a, n in zip(anchors, negatives, strict=False))
     rng.shuffle(pairs)
     return pairs[round(len(pairs) * 0.7) :]
 
@@ -99,8 +98,8 @@ def chronological_probe(root: Path, seed: int = SEED) -> list[Pair]:
         negatives.append(candidates[(cursor // len(identities)) % len(candidates)])
         cursor += 1
 
-    pairs = [Pair(a, p, 1) for a, p in zip(anchors, positives)]
-    pairs.extend(Pair(a, n, 0) for a, n in zip(anchors, negatives))
+    pairs = [Pair(a, p, 1) for a, p in zip(anchors, positives, strict=False)]
+    pairs.extend(Pair(a, n, 0) for a, n in zip(anchors, negatives, strict=False))
     rng.shuffle(pairs)
     return pairs
 
@@ -111,7 +110,9 @@ def _decode(path: Path) -> tf.Tensor:
     return tf.cast(image, tf.float32) / 255.0
 
 
-def _scores(model: tf.keras.Model, pairs: Iterable[Pair], batch_size: int) -> tuple[np.ndarray, float]:
+def _scores(
+    model: tf.keras.Model, pairs: Iterable[Pair], batch_size: int
+) -> tuple[np.ndarray, float]:
     pair_list = list(pairs)
     started = time.perf_counter()
     values: list[np.ndarray] = []
@@ -137,7 +138,9 @@ def _auc(labels: np.ndarray, scores: np.ndarray) -> float:
     positives = labels == 1
     n_positive = int(positives.sum())
     n_negative = int((~positives).sum())
-    return float((ranks[positives].sum() - n_positive * (n_positive + 1) / 2) / (n_positive * n_negative))
+    return float(
+        (ranks[positives].sum() - n_positive * (n_positive + 1) / 2) / (n_positive * n_negative)
+    )
 
 
 def _metrics(labels: np.ndarray, scores: np.ndarray, threshold: float) -> dict[str, float | int]:

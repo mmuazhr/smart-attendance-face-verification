@@ -2,15 +2,15 @@
 
 ## Current Phase
 
-Discovery and baseline reconstruction.
+Engineering hardening and portfolio packaging.
 
 ## Last Completed
 
-Located the historical archive and academic documentation, identified the project, confirmed that no matching GitHub repository exists, and created the persistent local workspace.
+Recovered and independently measured the legacy artifact, selected and implemented the local YuNet/SFace architecture, added privacy-safe persistence and API boundaries, and completed the core portfolio documentation.
 
 ## Currently Working On
 
-Implementing the selected privacy-first YuNet/SFace application architecture.
+Final local quality gate and GitHub handoff preparation. Publication remains pending because no repository target has been selected or authorized in this resumed task.
 
 ## Important Findings
 
@@ -40,18 +40,20 @@ Legacy artifact independently reproduced. Deterministic replay: 77.8% accuracy; 
 - Use YuNet detection and SFace embeddings as the default modern backend, with checksummed external weights and a clear training-provenance caveat.
 - Use multi-sample encrypted templates; do not persist raw enrollment or verification images.
 - Treat absence of liveness as an explicit deployment limitation, not a solved feature.
+- The modern application now supports admin-authorized enrollment, 50-frame quality-filtered capture, AES-GCM template encryption, local SFace verification, idempotent attendance writes, duplicate-window suppression, admin-only attendance reads, and participant deletion.
+- The real private-artifact E2E run accepted 48/50 enrollment frames, verified a separate-session query at 0.8212, wrote one attendance record, suppressed the immediate duplicate, returned the admin attendance view, and deleted the participant.
+- Automated suite: 17 tests pass with 85% package statement coverage after observability coverage was added; Ruff, strict MyPy, Bandit, and pip-audit pass. Browser QA at 390x844 shows no horizontal overflow or console errors.
 
 ## Known Blockers
 
-None at this phase. The original application source may be missing, but model and research reconstruction can continue.
+The original application source may be missing, and no GitHub repository target is established. The biometric system still has no validated liveness detector or institutional authentication by design.
 
 ## Next Actions
 
-1. Implement the typed face, template-vault, attendance, and verification services.
-2. Add FastAPI endpoints, a restrained camera interface, and model download tooling.
-3. Add unit, integration, API, and model smoke tests.
-4. Complete documentation, container, CI, security scans, and GitHub publishing.
+1. Review the final diff and commit the local hardening/documentation checkpoint.
+2. Decide on a GitHub repository target and authentication/publishing workflow.
+3. If publishing is authorized, push without exposing private artifacts and verify the rendered repository.
 
 ## Last Verified
 
-2026-09-02; repository not yet initialised.
+2026-09-02; local quality gates passed; repository is initialized on `main` with uncommitted hardening/documentation changes.

@@ -30,7 +30,8 @@ build/
 attendance*.csv
 logs/
 artifacts/
-models/
+models/*
+!models/README.md
 results/private/
 
 # Secrets and local configuration

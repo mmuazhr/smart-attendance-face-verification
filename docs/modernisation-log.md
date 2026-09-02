@@ -119,3 +119,44 @@ Build a local FastAPI application with a typed service layer, OpenCV backend, en
 ### Reason
 
 This keeps the original verification research intent, materially improves privacy and engineering quality, is reproducible without publishing personal data, and has a measured path to a compact deployable demo.
+
+## Engineering Checkpoint - Core Application
+
+### Implemented
+
+- OpenCV YuNet/SFace extraction with one-face, size, lighting, and blur gates.
+- Fifty-frame enrollment with rejected-frame accounting.
+- AES-256-GCM authenticated encryption, participant-bound additional data, and no raw image persistence.
+- SQLite participant and attendance repositories with foreign keys, UTC timestamps, transactional idempotency, and a duplicate window.
+- FastAPI enrollment, verification, deletion, health, and admin attendance routes.
+- Local admin-token protection for enrollment, deletion, and attendance access; required idempotency header for verification.
+- Camera-first responsive interface and CLI/model downloader.
+
+### Validation
+
+Fourteen automated tests pass with 85% statement coverage. Ruff and strict MyPy pass. A real-model end-to-end run accepted 48 of 50 enrollment images, verified a separate-session probe at 0.8212, wrote exactly one attendance event, suppressed an immediate duplicate, listed the event with admin authorization, and deleted the participant. Browser inspection at 390 × 844 found no horizontal overflow or console errors.
+
+### Remaining Boundary
+
+The system does not implement validated liveness detection or institutional identity/authentication. It is intentionally localhost-first and requires a second factor and authorization redesign before real classroom deployment.
+
+## 2026-09-02 - Operational and Portfolio Hardening
+
+### Implemented
+
+- Made the JSON request logger safe for embedding applications by preserving existing root handlers and applying the privacy-safe formatter without clearing unrelated handlers.
+- Added formatter tests that verify the allowlist and ensure exception messages, participant identifiers, and embedding fields do not enter log output.
+- Completed the portfolio README, FYP evolution narrative, interview brief, and operator runbook.
+- Marked data/model documentation, latency measurement, CI/container packaging, and security checks complete based on the recorded artifacts and current validation.
+
+### Validation
+
+- `uv run --extra dev pytest -q --cov=presenceguard --cov-report=term-missing`: 17 passed, 85% total statement coverage.
+- Ruff check and format check passed.
+- Strict MyPy passed.
+- Bandit reported no findings.
+- pip-audit reported no known vulnerabilities; the local package itself is not published to PyPI and is therefore skipped by the auditor.
+
+### Boundary
+
+The local repository is ready for review and a deliberate GitHub target decision. No remote repository was invented or pushed during this continuation. Historical face images, private attendance data, legacy weights, runtime databases, and secrets remain outside Git tracking.

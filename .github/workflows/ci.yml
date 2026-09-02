@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install locked environment
+        run: uv sync --frozen --extra dev
+      - name: Lint and format
+        run: |
+          uv run ruff check src tests scripts
+          uv run ruff format --check src tests scripts
+      - name: Type check
+        run: uv run mypy src
+      - name: Test
+        run: uv run pytest --cov=presenceguard --cov-report=term --cov-fail-under=80
+      - name: Source security scan
+        run: uv run bandit -q -r src
+      - name: Dependency audit
+        run: uv run pip-audit

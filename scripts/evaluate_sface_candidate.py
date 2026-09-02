@@ -9,13 +9,12 @@ import platform
 import random
 import time
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 import cv2 as cv
 import numpy as np
-
 
 SEED = 42
 
@@ -49,8 +48,8 @@ def legacy_replay(root: Path, seed: int = SEED) -> list[Pair]:
     rng.shuffle(positives)
     rng.shuffle(negatives)
     anchors, positives, negatives = anchors[:300], positives[:300], negatives[:300]
-    pairs = [Pair(a, p, 1) for a, p in zip(anchors, positives)]
-    pairs.extend(Pair(a, n, 0) for a, n in zip(anchors, negatives))
+    pairs = [Pair(a, p, 1) for a, p in zip(anchors, positives, strict=False)]
+    pairs.extend(Pair(a, n, 0) for a, n in zip(anchors, negatives, strict=False))
     rng.shuffle(pairs)
     return pairs[round(len(pairs) * 0.7) :]
 
@@ -73,8 +72,8 @@ def chronological_probe(root: Path, seed: int = SEED) -> list[Pair]:
         candidates = sorted(by_identity[identities[cursor % len(identities)]])
         negatives.append(candidates[(cursor // len(identities)) % len(candidates)])
         cursor += 1
-    pairs = [Pair(a, p, 1) for a, p in zip(anchors, positives)]
-    pairs.extend(Pair(a, n, 0) for a, n in zip(anchors, negatives))
+    pairs = [Pair(a, p, 1) for a, p in zip(anchors, positives, strict=False)]
+    pairs.extend(Pair(a, n, 0) for a, n in zip(anchors, negatives, strict=False))
     rng.shuffle(pairs)
     return pairs
 
@@ -102,10 +101,16 @@ def calibrated_probe(root: Path, seed: int = SEED) -> tuple[list[Pair], list[Pai
         test_identities.add(identity)
         test_file_count += len(by_identity[identity])
     test_negatives = [
-        path for identity in identities if identity in test_identities for path in by_identity[identity]
+        path
+        for identity in identities
+        if identity in test_identities
+        for path in by_identity[identity]
     ]
     dev_negatives = [
-        path for identity in identities if identity not in test_identities for path in by_identity[identity]
+        path
+        for identity in identities
+        if identity not in test_identities
+        for path in by_identity[identity]
     ]
     rng.shuffle(test_negatives)
     rng.shuffle(dev_negatives)
@@ -113,10 +118,10 @@ def calibrated_probe(root: Path, seed: int = SEED) -> tuple[list[Pair], list[Pai
     if len(test_negatives) < len(test_anchors) or len(dev_negatives) < len(dev_anchors):
         raise RuntimeError("Negative identity split does not contain enough files")
 
-    dev = [Pair(a, p, 1) for a, p in zip(dev_anchors, dev_positives)]
-    dev.extend(Pair(a, n, 0) for a, n in zip(dev_anchors, dev_negatives))
-    test = [Pair(a, p, 1) for a, p in zip(test_anchors, test_positives)]
-    test.extend(Pair(a, n, 0) for a, n in zip(test_anchors, test_negatives))
+    dev = [Pair(a, p, 1) for a, p in zip(dev_anchors, dev_positives, strict=False)]
+    dev.extend(Pair(a, n, 0) for a, n in zip(dev_anchors, dev_negatives, strict=False))
+    test = [Pair(a, p, 1) for a, p in zip(test_anchors, test_positives, strict=False)]
+    test.extend(Pair(a, n, 0) for a, n in zip(test_anchors, test_negatives, strict=False))
     rng.shuffle(dev)
     rng.shuffle(test)
     return dev, test
@@ -149,10 +154,16 @@ def template_protocol(
         test_identities.add(identity)
         test_file_count += len(by_identity[identity])
     dev_negative = [
-        path for identity in identities if identity not in test_identities for path in by_identity[identity]
+        path
+        for identity in identities
+        if identity not in test_identities
+        for path in by_identity[identity]
     ]
     test_negative = [
-        path for identity in identities if identity in test_identities for path in by_identity[identity]
+        path
+        for identity in identities
+        if identity in test_identities
+        for path in by_identity[identity]
     ]
     rng.shuffle(dev_negative)
     random.Random(seed + 1).shuffle(test_negative)
@@ -255,7 +266,9 @@ class SFaceEngine:
         return float(score), True
 
 
-def _evaluate(engine: SFaceEngine, pairs: Iterable[Pair], threshold: float) -> dict[str, float | int]:
+def _evaluate(
+    engine: SFaceEngine, pairs: Iterable[Pair], threshold: float
+) -> dict[str, float | int]:
     pair_list = list(pairs)
     started = time.perf_counter()
     scored = [engine.score(pair.left, pair.right) for pair in pair_list]
@@ -296,7 +309,9 @@ def _calibrate_threshold(
     labels: np.ndarray, scores: np.ndarray, maximum_false_accept_rate: float
 ) -> tuple[float, dict[str, float | int]]:
     candidates = np.unique(scores)
-    candidates = np.concatenate(([float(candidates.min()) - 1e-6], candidates, [float(candidates.max()) + 1e-6]))
+    candidates = np.concatenate(
+        ([float(candidates.min()) - 1e-6], candidates, [float(candidates.max()) + 1e-6])
+    )
     eligible: list[tuple[float, dict[str, float | int]]] = []
     for candidate in candidates:
         metrics = _metrics(labels, scores, float(candidate))
@@ -386,7 +401,8 @@ def main() -> None:
             "SFace weight training-data provenance is not fully documented in the OpenCV Zoo model card.",
         ],
         "protocols": {
-            name: _evaluate(engine, pairs, args.match_threshold) for name, pairs in protocols.items()
+            name: _evaluate(engine, pairs, args.match_threshold)
+            for name, pairs in protocols.items()
         },
         "calibrated_protocol": {
             "policy": "Maximize calibration recall subject to false-accept rate <= 1%.",

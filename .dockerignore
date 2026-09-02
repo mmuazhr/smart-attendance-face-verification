@@ -1,0 +1,13 @@
+.git
+.github
+.private
+.venv
+.venv-modern
+data/private
+models/*.onnx
+results/private
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov

@@ -55,9 +55,7 @@ def audit(root: Path) -> dict[str, Any]:
 
     duplicate_groups = [paths for paths in hashes.values() if len(paths) > 1]
     cross_class_duplicates = [
-        paths
-        for paths in duplicate_groups
-        if len({path.split("/", 1)[0] for path in paths}) > 1
+        paths for paths in duplicate_groups if len({path.split("/", 1)[0] for path in paths}) > 1
     ]
 
     return {
@@ -70,9 +68,7 @@ def audit(root: Path) -> dict[str, Any]:
         "modes": dict(modes.most_common()),
         "unreadable": unreadable,
         "exact_duplicate_group_count": len(duplicate_groups),
-        "exact_duplicate_extra_file_count": sum(
-            len(paths) - 1 for paths in duplicate_groups
-        ),
+        "exact_duplicate_extra_file_count": sum(len(paths) - 1 for paths in duplicate_groups),
         "cross_class_duplicate_group_count": len(cross_class_duplicates),
         "exact_duplicate_groups": duplicate_groups,
         "cross_class_duplicate_groups": cross_class_duplicates,
