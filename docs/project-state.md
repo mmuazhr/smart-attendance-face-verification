@@ -2,15 +2,15 @@
 
 ## Current Phase
 
-Engineering hardening and portfolio packaging.
+GitHub handoff.
 
 ## Last Completed
 
-Recovered and independently measured the legacy artifact, selected and implemented the local YuNet/SFace architecture, added privacy-safe persistence and API boundaries, and completed the core portfolio documentation.
+Recovered and independently measured the legacy artifact, selected and implemented the local YuNet/SFace architecture, added privacy-safe persistence and API boundaries, completed the portfolio documentation, and created the intended public GitHub repository.
 
 ## Currently Working On
 
-Final local quality gate and GitHub handoff preparation. Publication remains pending because no repository target has been selected or authorized in this resumed task.
+The initial GitHub push is blocked because the authenticated OAuth token lacks the `workflow` scope required to publish `.github/workflows/ci.yml`.
 
 ## Important Findings
 
@@ -46,14 +46,14 @@ Legacy artifact independently reproduced. Deterministic replay: 77.8% accuracy; 
 
 ## Known Blockers
 
-The original application source may be missing, and no GitHub repository target is established. The biometric system still has no validated liveness detector or institutional authentication by design.
+The original application source may be missing. GitHub publication needs a one-time account re-authorization; the biometric system still has no validated liveness detector or institutional authentication by design.
 
 ## Next Actions
 
-1. Review the final diff and commit the local hardening/documentation checkpoint.
-2. Decide on a GitHub repository target and authentication/publishing workflow.
-3. If publishing is authorized, push without exposing private artifacts and verify the rendered repository.
+1. Re-authorize GitHub CLI with the `workflow` scope.
+2. Push `main` to the created repository without rewriting local history.
+3. Verify README rendering, links, CI, and the absence of private artifacts.
 
 ## Last Verified
 
-2026-09-02; local quality gates passed; repository is initialized on `main` with uncommitted hardening/documentation changes.
+2026-09-02; local quality gates passed; public repository created but initial push is pending GitHub `workflow` scope.

@@ -160,3 +160,15 @@ The system does not implement validated liveness detection or institutional iden
 ### Boundary
 
 The local repository is ready for review and a deliberate GitHub target decision. No remote repository was invented or pushed during this continuation. Historical face images, private attendance data, legacy weights, runtime databases, and secrets remain outside Git tracking.
+
+## 2026-09-02 - GitHub Publication Checkpoint
+
+### Result
+
+- Inspected the authenticated account and existing repositories. `mmuazhr/hadir` is a separate QR-badge attendance product and is not the face-verification FYP repository.
+- Confirmed that `mmuazhr/smart-attendance-face-verification` did not exist, then created it as a public portfolio repository.
+- The initial push was rejected by GitHub because the stored OAuth token has `repo`, `read:org`, and `gist` but not `workflow`; GitHub requires that scope for a commit containing `.github/workflows/ci.yml`.
+
+### Decision
+
+Preserve the complete local history and CI workflow. Do not create a second squashed snapshot or silently omit CI. The next operator action is `gh auth refresh --hostname github.com --scopes workflow`, followed by a normal push and public-repository verification.

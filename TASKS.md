@@ -58,7 +58,7 @@
 - [ ] Initialise Git and establish a meaningful commit history.
 - [ ] Confirm no pre-existing repository should be reused.
 - [x] Scan history and working tree for secrets, personal data, biometric data, and oversized files.
-- [ ] Create or configure the GitHub repository.
+- [x] Create or configure the GitHub repository.
 - [ ] Push without rewriting existing history.
 - [ ] Verify README rendering, links, repository description, topics, and published contents.
 
