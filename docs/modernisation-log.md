@@ -159,7 +159,7 @@ The system does not implement validated liveness detection or institutional iden
 
 ### Boundary
 
-The local repository is ready for review and a deliberate GitHub target decision. No remote repository was invented or pushed during this continuation. Historical face images, private attendance data, legacy weights, runtime databases, and secrets remain outside Git tracking.
+The local repository was ready for review and the intended GitHub target was subsequently created. Historical face images, private attendance data, legacy weights, runtime databases, and secrets remain outside Git tracking.
 
 ## 2026-09-02 - GitHub Publication Checkpoint
 
@@ -171,4 +171,17 @@ The local repository is ready for review and a deliberate GitHub target decision
 
 ### Decision
 
-Preserve the complete local history and CI workflow. Do not create a second squashed snapshot or silently omit CI. The next operator action is `gh auth refresh --hostname github.com --scopes workflow`, followed by a normal push and public-repository verification.
+Preserve the complete local history and CI workflow. Do not create a second squashed snapshot or silently omit CI. The next operator action was a normal push after account authorization, followed by public-repository verification.
+
+## 2026-09-02 - GitHub Publication Completed
+
+### Result
+
+- Pushed the existing local `main` history without rewriting commits to `https://github.com/mmuazhr/smart-attendance-face-verification`.
+- Verified the public tree contains the intended README, source, tests, results, documentation, model/data cards, Docker files, and CI workflow.
+- Added portfolio topics: attendance, computer-vision, face-verification, fastapi, machine-learning, privacy, and python.
+- GitHub Actions run `33641810274` passed all quality steps: locked install, Ruff, MyPy, pytest, Bandit, and pip-audit.
+
+### Final Boundary
+
+No biometric images, embeddings, participant records, attendance CSVs, legacy weights, runtime databases, secrets, or private source artifacts were published. Docker execution was not run locally because the Docker CLI is unavailable on this host; the compose configuration remains provided for deployment validation.

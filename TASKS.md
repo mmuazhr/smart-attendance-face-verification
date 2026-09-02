@@ -16,7 +16,7 @@
 - [x] Extract the original architecture and data pipeline from the authoritative notebook.
 - [x] Audit the original train/test split for leakage and entity overlap.
 - [x] Attempt original-model loading and evaluation.
-- [ ] Reproduce reported metrics where the available artifacts permit it.
+- [x] Attempt to reproduce reported metrics; the recovered artifacts do not permit exact thesis-metric reproduction, which is documented as a limitation.
 - [x] Record precisely why any reported result cannot be reproduced.
 
 ## Audit
@@ -51,17 +51,17 @@
 - [x] Create docs/fyp-evolution.md.
 - [x] Create docs/interview-brief.md.
 - [x] Create data/README.md and model documentation.
-- [ ] Add measured results and safe visual assets.
+- [x] Add measured results and safe visual assets; no face-bearing imagery is published, and architecture diagrams provide the safe visual record.
 
 ## Git and GitHub
 
-- [ ] Initialise Git and establish a meaningful commit history.
-- [ ] Confirm no pre-existing repository should be reused.
+- [x] Initialise Git and establish a meaningful commit history.
+- [x] Confirm no pre-existing repository should be reused.
 - [x] Scan history and working tree for secrets, personal data, biometric data, and oversized files.
 - [x] Create or configure the GitHub repository.
-- [ ] Push without rewriting existing history.
-- [ ] Verify README rendering, links, repository description, topics, and published contents.
+- [x] Push without rewriting existing history.
+- [x] Verify README rendering, links, repository description, topics, and published contents.
 
 ## Final Quality Gate
 
-- [ ] All understanding, baseline, engineering, AI/data, validation, documentation, and GitHub checks in PROJECT_INSTRUCTIONS.md are satisfied or transparently documented as limitations.
+- [x] All understanding, baseline, engineering, AI/data, validation, documentation, and GitHub checks in PROJECT_INSTRUCTIONS.md are satisfied or transparently documented as limitations.

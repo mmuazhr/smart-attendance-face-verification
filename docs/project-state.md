@@ -2,15 +2,15 @@
 
 ## Current Phase
 
-GitHub handoff.
+Published portfolio reference.
 
 ## Last Completed
 
-Recovered and independently measured the legacy artifact, selected and implemented the local YuNet/SFace architecture, added privacy-safe persistence and API boundaries, completed the portfolio documentation, and created the intended public GitHub repository.
+Recovered and independently measured the legacy artifact, selected and implemented the local YuNet/SFace architecture, added privacy-safe persistence and API boundaries, completed the portfolio documentation, published the intended public GitHub repository, and verified its CI run.
 
 ## Currently Working On
 
-The initial GitHub push is blocked because the authenticated OAuth token lacks the `workflow` scope required to publish `.github/workflows/ci.yml`.
+No current publication blocker. The application remains a research/portfolio reference rather than a production biometric system.
 
 ## Important Findings
 
@@ -46,14 +46,14 @@ Legacy artifact independently reproduced. Deterministic replay: 77.8% accuracy; 
 
 ## Known Blockers
 
-The original application source may be missing. GitHub publication needs a one-time account re-authorization; the biometric system still has no validated liveness detector or institutional authentication by design.
+The original application source may be missing, and the biometric system still has no validated liveness detector or institutional authentication by design. Docker was not installed locally, so container execution remains CI/deployment validation work.
 
 ## Next Actions
 
-1. Re-authorize GitHub CLI with the `workflow` scope.
-2. Push `main` to the created repository without rewriting local history.
-3. Verify README rendering, links, CI, and the absence of private artifacts.
+1. Expand the consented, subject/session-disjoint evaluation dataset.
+2. Add validated presentation-attack detection and institutional identity.
+3. Revisit container execution and deployment hardening on a host with Docker.
 
 ## Last Verified
 
-2026-09-02; local quality gates passed; public repository created but initial push is pending GitHub `workflow` scope.
+2026-09-02; public repository `mmuazhr/smart-attendance-face-verification` verified on `main` at `c0ea572`; CI run `33641810274` passed.
