@@ -56,4 +56,4 @@ The original application source may be missing, and the biometric system still h
 
 ## Last Verified
 
-2026-09-02; public repository `mmuazhr/smart-attendance-face-verification` verified on `main` at `c0ea572`; CI run `33641810274` passed.
+2026-09-02; public repository `mmuazhr/smart-attendance-face-verification` verified on `main` at `4798e74`; CI run `33642116776` passed.
