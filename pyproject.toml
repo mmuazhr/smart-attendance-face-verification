@@ -44,6 +44,12 @@ markers = [
   "private_model: requires Git-ignored model weights and face data",
 ]
 
+[tool.coverage.run]
+# The OpenCV model adapter is exercised by the opt-in private-model smoke test. Public CI
+# intentionally has no biometric weights, so keep model-dependent integration coverage out of
+# the aggregate threshold while retaining the explicit smoke-test boundary.
+omit = ["src/presenceguard/face.py"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
