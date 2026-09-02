@@ -15,20 +15,20 @@
 - [x] Reconstruct the original environment and dependency constraints.
 - [x] Extract the original architecture and data pipeline from the authoritative notebook.
 - [x] Audit the original train/test split for leakage and entity overlap.
-- [ ] Attempt original-model loading and evaluation.
+- [x] Attempt original-model loading and evaluation.
 - [ ] Reproduce reported metrics where the available artifacts permit it.
-- [ ] Record precisely why any reported result cannot be reproduced.
+- [x] Record precisely why any reported result cannot be reproduced.
 
 ## Audit
 
-- [ ] Audit data provenance, consent, privacy, labels, duplicates, imbalance, and demographic claims.
-- [ ] Audit model choice, objective, thresholds, calibration, and evaluation methodology.
-- [ ] Audit architecture, application code, persistence, security, and UX.
-- [ ] Produce a P0-P3 improvement backlog and compare modernisation options.
+- [x] Audit data provenance, consent, privacy, labels, duplicates, imbalance, and demographic claims.
+- [x] Audit model choice, objective, thresholds, calibration, and evaluation methodology.
+- [x] Audit architecture, application code, persistence, security, and UX.
+- [x] Produce a P0-P3 improvement backlog and compare modernisation options.
 
 ## Modernisation
 
-- [ ] Select the strongest direction while preserving the original research intent.
+- [x] Select the strongest direction while preserving the original research intent.
 - [ ] Implement a reproducible, privacy-preserving face-verification core.
 - [ ] Implement deterministic attendance-domain logic with duplicate and replay protection.
 - [ ] Add configuration, structured logging, error handling, and typed interfaces.

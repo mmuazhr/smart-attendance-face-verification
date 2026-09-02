@@ -10,7 +10,7 @@ Located the historical archive and academic documentation, identified the projec
 
 ## Currently Working On
 
-Loading the supplied Keras 2.12 model and building deterministic baseline evaluation protocols.
+Implementing the selected privacy-first YuNet/SFace application architecture.
 
 ## Important Findings
 
@@ -29,7 +29,7 @@ Loading the supplied Keras 2.12 model and building deterministic baseline evalua
 
 ## Current Baseline
 
-Architecture and historical notebook outputs reconstructed; independent saved-model evaluation is in progress.
+Legacy artifact independently reproduced. Deterministic replay: 77.8% accuracy; contaminated chronological probe: 98.9%. Chosen SFace multi-reference protocol: 93.3% accuracy, 100% precision, 86.7% recall, 0 observed false accepts over 270 test queries.
 
 ## Major Decisions
 
@@ -37,6 +37,9 @@ Architecture and historical notebook outputs reconstructed; independent saved-mo
 - Use this repository as the reconstructed and modernised implementation.
 - Keep original biometric data, raw notebooks with embedded outputs, trained weights, and attendance records outside Git tracking.
 - Do not accept the thesis metrics as a valid modern baseline until the split methodology and model provenance are verified.
+- Use YuNet detection and SFace embeddings as the default modern backend, with checksummed external weights and a clear training-provenance caveat.
+- Use multi-sample encrypted templates; do not persist raw enrollment or verification images.
+- Treat absence of liveness as an explicit deployment limitation, not a solved feature.
 
 ## Known Blockers
 
@@ -44,10 +47,10 @@ None at this phase. The original application source may be missing, but model an
 
 ## Next Actions
 
-1. Load the saved model with the matching Keras runtime.
-2. Build deterministic historical-protocol and leakage-aware evaluation manifests.
-3. Run and record baseline metrics and latency.
-4. Complete the P0-P3 audit and modernisation decision.
+1. Implement the typed face, template-vault, attendance, and verification services.
+2. Add FastAPI endpoints, a restrained camera interface, and model download tooling.
+3. Add unit, integration, API, and model smoke tests.
+4. Complete documentation, container, CI, security scans, and GitHub publishing.
 
 ## Last Verified
 

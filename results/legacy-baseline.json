@@ -1,0 +1,72 @@
+{
+  "limitations": [
+    "Original random seeds and train/test membership were not preserved.",
+    "The supplied model may have trained on images used by both aggregate protocols.",
+    "The recovered archive does not contain participant labels for the thesis's 30-person cohort.",
+    "Results characterize this artifact and archive only; they do not establish demographic generalization."
+  ],
+  "model": {
+    "keras_version": "2.12.0",
+    "name": "SiameseNetwork",
+    "parameters": 38964545,
+    "tensorflow_version": "2.12.0"
+  },
+  "protocols": {
+    "chronological_probe": {
+      "accuracy": 0.9888888888888889,
+      "f1": 0.988929889298893,
+      "false_accept_rate": 0.014814814814814815,
+      "false_reject_rate": 0.007407407407407408,
+      "fn": 1,
+      "fp": 2,
+      "inference_seconds": 15.630594125000002,
+      "milliseconds_per_pair": 57.89108935185186,
+      "negative_pairs": 135,
+      "negative_score_mean": 0.011317934840917587,
+      "positive_pairs": 135,
+      "positive_score_mean": 0.9712693691253662,
+      "precision": 0.9852941176470589,
+      "recall": 0.9925925925925926,
+      "roc_auc": 0.9996707818930041,
+      "samples": 270,
+      "score_max": 0.9999312162399292,
+      "score_min": 6.81420715409331e-07,
+      "specificity": 0.9851851851851852,
+      "threshold": 0.5,
+      "tn": 133,
+      "tp": 134
+    },
+    "legacy_replay": {
+      "accuracy": 0.7777777777777778,
+      "f1": 0.7333333333333334,
+      "false_accept_rate": 0.03409090909090909,
+      "false_reject_rate": 0.40217391304347827,
+      "fn": 37,
+      "fp": 3,
+      "inference_seconds": 11.053011584,
+      "milliseconds_per_pair": 61.40561991111111,
+      "negative_pairs": 88,
+      "negative_score_mean": 0.03564321622252464,
+      "positive_pairs": 92,
+      "positive_score_mean": 0.6302082538604736,
+      "precision": 0.9482758620689655,
+      "recall": 0.5978260869565217,
+      "roc_auc": 0.9678853754940712,
+      "samples": 180,
+      "score_max": 0.9999356269836426,
+      "score_min": 2.3018897010729233e-08,
+      "specificity": 0.9659090909090909,
+      "threshold": 0.5,
+      "tn": 85,
+      "tp": 55
+    }
+  },
+  "runtime": {
+    "batch_size": 16,
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "processor": "arm",
+    "python": "3.9.6"
+  },
+  "schema_version": 1,
+  "seed": 42
+}

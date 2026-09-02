@@ -18,6 +18,7 @@ __pycache__/
 .coverage
 htmlcov/
 .venv/
+.venv-modern/
 dist/
 build/
 *.egg-info/
@@ -43,4 +44,3 @@ results/private/
 .DS_Store
 .idea/
 .vscode/
-

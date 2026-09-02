@@ -68,3 +68,54 @@ Create `Documents/Codex/projects/smart-attendance-face-verification`.
 ### Reason
 
 It is persistent, clearly named from the actual FYP, separate from the immutable source archive, and suitable for Git/GitHub work.
+
+## Experiment 001 - Legacy Artifact Replay
+
+### Question
+
+Can the supplied HDF5 model be loaded and independently evaluated?
+
+### Method
+
+Use TensorFlow macOS/Keras 2.12.0, a fixed seed of 42, a deterministic analogue of the notebook's 300-image selection and 70/30 pair split, and the original 0.5 decision threshold. Also run a later-capture probe.
+
+### Result
+
+- Deterministic replay: accuracy 0.7778, precision 0.9483, recall 0.5978, FAR 0.0341, ROC AUC 0.9679, 61.4 ms/pair.
+- Chronological probe: accuracy 0.9889, precision 0.9853, recall 0.9926, FAR 0.0148, ROC AUC 0.9997, 57.9 ms/pair.
+
+### Interpretation
+
+The artifact is runnable, but the missing original training manifest means neither protocol is guaranteed independent of training. The chronological number is likely optimistic and cannot validate the thesis's population claims.
+
+## Experiment 002 - YuNet and SFace
+
+### Question
+
+Can a compact, locally executed, pretrained embedding replace the large custom CNN while improving the methodology?
+
+### Method
+
+Use OpenCV 4.14, YuNet 2023mar single-face detection, SFace 2021dec embeddings, and cosine matching. Test pairwise use first, then test the correct attendance pattern: one query against multiple enrollment references. Calibrate on early query captures under a 1% false-accept ceiling and test on later captures plus negative identities unseen during calibration.
+
+### Result
+
+The upstream pair threshold performed poorly. The 48-reference template protocol produced accuracy 0.9333, precision 1.0, recall 0.8667, observed FAR 0.0, ROC AUC 0.8909, and 9.0 ms/query over 270 test queries.
+
+### Decision
+
+Adopt YuNet + SFace as the default reference backend and use multi-sample enrollment. Preserve the legacy model only as a private baseline. Explicitly document that SFace's precise training-data provenance is incomplete and that the small, single-enrollee test cannot establish production biometric performance.
+
+## Engineering Decision - Modern Architecture
+
+### Options Considered
+
+Legacy model wrapping, retraining, a cloud API, InsightFace/ArcFace, YuNet + SFace, and a non-biometric redesign.
+
+### Chosen Approach
+
+Build a local FastAPI application with a typed service layer, OpenCV backend, encrypted face templates, SQLite attendance records, fail-closed face policy, duplicate protection, and a camera-first interface. Keep non-biometric attendance as the recommended high-assurance fallback and state that liveness is not solved.
+
+### Reason
+
+This keeps the original verification research intent, materially improves privacy and engineering quality, is reproducible without publishing personal data, and has a measured path to a compact deployable demo.

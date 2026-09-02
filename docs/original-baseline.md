@@ -58,6 +58,10 @@ The webcam prototype crops a fixed 250 × 250 region rather than detecting or al
 
 This procedure has no face-presence check, quality gate, liveness or replay defense, multi-face policy, calibrated false-accept target, or secure template storage. The small CSV is evidence of attendance output, but the recoverable code does not provide a complete attendance service.
 
-## Baseline Status
+## Reproduced Baseline
 
-Model loading and a deterministic evaluation harness are in progress. The first defensible baseline will report both the historical pair protocol and a leakage-aware temporal/session proxy split, with limitations stated alongside the results.
+The saved model loads successfully under TensorFlow macOS 2.12.0. A deterministic analogue of the notebook's 300-per-class selection and 70/30 pair split produced 77.8% accuracy, 94.8% precision, 59.8% recall, and 3.4% false-accept rate at threshold 0.5 over 180 pairs.
+
+A chronological probe over 270 pairs produced 98.9% accuracy, 98.5% precision, 99.3% recall, and 1.5% false-accept rate. This stronger number is not a clean generalisation result: the supplied model's original training membership is missing and may include probe images.
+
+See `docs/results.md` and the aggregate JSON outputs for the complete metrics and limitations.
