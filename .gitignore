@@ -1,0 +1,46 @@
+# Private source artifacts and biometric data
+.private/
+data/raw/
+data/private/
+original/private/
+*.h5
+*.keras
+*.ckpt
+*.data-*
+*.index
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Runtime outputs
+attendance*.csv
+logs/
+artifacts/
+models/
+results/private/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+
